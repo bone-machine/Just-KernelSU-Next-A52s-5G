@@ -195,6 +195,9 @@ struct task_struct init_task
 #ifdef CONFIG_SECURITY
 	.security	= NULL,
 #endif
+#ifdef CONFIG_SECCOMP
+	.seccomp	= { .filter_count = ATOMIC_INIT(0) },
+#endif
 	INIT_INTEGRITY(init_task)
 };
 EXPORT_SYMBOL(init_task);
