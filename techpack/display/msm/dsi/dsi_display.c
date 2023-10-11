@@ -41,6 +41,8 @@
 
 #define SEC_PANEL_NAME_MAX_LEN  256
 
+struct dsi_display *primary_display;
+
 u8 dbgfs_tx_cmd_buf[SZ_4K];
 
 #if defined(CONFIG_DISPLAY_SAMSUNG)
@@ -7472,6 +7474,7 @@ int dsi_display_get_modes(struct dsi_display *display,
 exit:
 	*out_modes = display->modes;
 	rc = 0;
+	primary_display = display;
 
 error:
 	if (rc)
@@ -9339,6 +9342,10 @@ int dsi_display_unprepare(struct dsi_display *display)
 #endif
 
 	return rc;
+}
+
+struct dsi_display *get_main_display(void) {
+	return primary_display;
 }
 
 void __init dsi_display_register(void)
