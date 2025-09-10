@@ -146,5 +146,3 @@ endif
 obj-$(CONFIG_SND_SOC_TAS256x) += tas256x_dlkm.o
 tas256x_dlkm-y := $(TAS256x_OBJS)
 
-# inject some build related information
-DEFINES += -DBUILD_TIMESTAMP=\"$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')\"
