@@ -1504,7 +1504,7 @@ static void audit_log_exit(void)
 	context->personality = current->personality;
 	
 // [ SEC_SELINUX_PORTING_COMMON
-	if (context->major != __NR_setsockopt) {
+//	if (context->major != __NR_setsockopt) {
 // ] SEC_SELINUX_PORTING_COMMON
 
 	ab = audit_log_start(context, GFP_KERNEL, AUDIT_SYSCALL);
@@ -1622,7 +1622,7 @@ static void audit_log_exit(void)
 	audit_log_proctitle();
 	
 // [ SEC_SELINUX_PORTING_COMMON
-	} // End of context->major != __NR_setsockopt
+//	} // End of context->major != __NR_setsockopt
 // ] SEC_SELINUX_PORTING_COMMON
 
 	/* Send end of event record to help user space know we are finished */

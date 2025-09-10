@@ -121,12 +121,12 @@ extern struct selinux_state selinux_state;
 extern int selinux_enforcing;
 static inline bool enforcing_enabled(struct selinux_state *state)
 {
-	return selinux_enforcing; // SEC_SELINUX_PORTING_COMMON Change to use RKP
+	return state->enforcing; // SEC_SELINUX_PORTING_COMMON Change to use RKP
 }
 
 static inline void enforcing_set(struct selinux_state *state, bool value)
 {
-	selinux_enforcing = value; // SEC_SELINUX_PORTING_COMMON Change to use RKP
+	state->enforcing = value; // SEC_SELINUX_PORTING_COMMON Change to use RKP
 }
 #else
 static inline bool enforcing_enabled(struct selinux_state *state)
@@ -239,11 +239,11 @@ struct extended_perms {
 
 /* definitions of av_decision.flags */
 // [ SEC_SELINUX_PORTING_COMMON
-#ifdef CONFIG_ALWAYS_ENFORCE
-#define AVD_FLAGS_PERMISSIVE	0x0000
-#else
+// #ifdef CONFIG_ALWAYS_ENFORCE
+// #define AVD_FLAGS_PERMISSIVE	0x0000
+// #else
 #define AVD_FLAGS_PERMISSIVE	0x0001
-#endif
+// #endif
 // ] SEC_SELINUX_PORTING_COMMON
 
 void security_compute_av(struct selinux_state *state,
