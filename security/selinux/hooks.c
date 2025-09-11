@@ -309,7 +309,7 @@ static int __inode_security_revalidate(struct inode *inode,
 
 	might_sleep_if(may_sleep);
 
-	if (ss_initialized && // SEC_SELINUX_PORTING_COMMON Change to use RKP
+	if (selinux_state.initialized && // SEC_SELINUX_PORTING_COMMON Change to use RKP
 	    isec->initialized != LABEL_INITIALIZED) {
 		if (!may_sleep)
 			return -ECHILD;
