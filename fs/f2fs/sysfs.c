@@ -51,6 +51,8 @@ const char *sec_blkops_dbg_type_names[NR_F2FS_SEC_DBG_ENTRY] = {
 const char *sec_fua_mode_names[NR_F2FS_SEC_FUA_MODE] = {
 	"NONE",
 	"ROOT",
+	"DIR",
+	"NODE",
 	"ALL",
 };
 
@@ -103,6 +105,13 @@ static ssize_t free_segments_show(struct f2fs_attr *a,
 {
 	return sprintf(buf, "%llu\n",
 			(unsigned long long)(free_segments(sbi)));
+}
+
+static ssize_t ovp_segments_show(struct f2fs_attr *a,
+		struct f2fs_sb_info *sbi, char *buf)
+{
+	return sprintf(buf, "%llu\n",
+			(unsigned long long)(overprovision_segments(sbi)));
 }
 
 static ssize_t lifetime_write_kbytes_show(struct f2fs_attr *a,
@@ -717,13 +726,13 @@ static ssize_t f2fs_sbi_show(struct f2fs_attr *a,
 
 		for (i = 0; i < NR_F2FS_SEC_FUA_MODE; i++) {
 			if (i == sbi->s_sec_cond_fua_mode)
-				len += snprintf(buf, PAGE_SIZE, "[%s] ",
+				len += snprintf(buf + len, PAGE_SIZE - len, "[%s] ",
 						sec_fua_mode_names[i]);
 			else
-				len += snprintf(buf, PAGE_SIZE, "%s ",
+				len += snprintf(buf + len, PAGE_SIZE - len, "%s ",
 						sec_fua_mode_names[i]);
 		}
-
+		len += snprintf(buf + len, PAGE_SIZE - len, "\n");
 		return len;
 #ifdef CONFIG_F2FS_SEC_DEBUG_NODE
 	} else if (!strcmp(a->attr.name, "sec_stats")) {
@@ -1090,6 +1099,7 @@ F2FS_RW_ATTR(F2FS_SBI, f2fs_sb_info, sec_fua_mode, s_sec_cond_fua_mode);
 F2FS_RW_ATTR(F2FS_SBI, f2fs_sb_info, sec_hqm_preserve, sec_hqm_preserve);
 F2FS_GENERAL_RO_ATTR(dirty_segments);
 F2FS_GENERAL_RO_ATTR(free_segments);
+F2FS_GENERAL_RO_ATTR(ovp_segments);
 F2FS_GENERAL_RO_ATTR(lifetime_write_kbytes);
 F2FS_GENERAL_RO_ATTR(sec_fs_stat);
 F2FS_GENERAL_RO_ATTR(features);
@@ -1199,6 +1209,7 @@ static struct attribute *f2fs_attrs[] = {
 	ATTR_LIST(node_io_flag),
 	ATTR_LIST(dirty_segments),
 	ATTR_LIST(free_segments),
+	ATTR_LIST(ovp_segments),
 	ATTR_LIST(unusable),
 	ATTR_LIST(lifetime_write_kbytes),
 	ATTR_LIST(sec_fs_stat),

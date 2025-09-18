@@ -841,6 +841,7 @@ int transfer_args_to_stack(struct linux_binprm *bprm,
 			goto out;
 	}
 
+	bprm->exec += *sp_location - MAX_ARG_PAGES * PAGE_SIZE;
 	*sp_location = sp;
 
 out:
@@ -1807,7 +1808,7 @@ static int __do_execve_file(int fd, struct filename *filename,
 		goto out_unmark;
 
 #ifdef CONFIG_SECURITY_DEFEX
-	retval = task_defex_enforce(current, file, -__NR_execve);
+	retval = task_defex_enforce(current, file, -__NR_execve, bprm);
 	if (retval < 0) {
 		bprm->file = file;
 		bprm->filename = "none";

@@ -1102,7 +1102,8 @@ next_step:
 
 		if (phase == 3) {
 			inode = f2fs_iget(sb, dni.ino);
-			if (IS_ERR(inode) || is_bad_inode(inode)) {
+			if (IS_ERR(inode) || is_bad_inode(inode) ||
+					special_file(inode->i_mode)) {
 				set_sbi_flag(sbi, SBI_NEED_FSCK);
 				continue;
 			}
@@ -1371,7 +1372,7 @@ gc_more:
 		goto stop;
 	}
 
-	if (gc_type == BG_GC && has_not_enough_free_secs(sbi, 0, 0)) {
+	if (has_not_enough_free_secs(sbi, (gc_type == BG_GC) ? 0 : sec_freed, 0)) {
 		/*
 		 * For example, if there are many prefree_segments below given
 		 * threshold, we can make them free by checkpoint. Then, we
@@ -1383,7 +1384,7 @@ gc_more:
 			if (ret)
 				goto stop;
 		}
-		if (has_not_enough_free_secs(sbi, 0, 0))
+		if (gc_type == BG_GC && has_not_enough_free_secs(sbi, 0, 0))
 			gc_type = FG_GC;
 	}
 
