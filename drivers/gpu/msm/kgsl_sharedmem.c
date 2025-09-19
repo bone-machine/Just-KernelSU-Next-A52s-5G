@@ -948,7 +948,7 @@ static void kgsl_contiguous_free(struct kgsl_memdesc *memdesc)
 {
 	if (!memdesc->hostptr)
 		return;
-		
+
 	if (memdesc->priv & KGSL_MEMDESC_MAPPED)
 		return;
 
@@ -969,12 +969,12 @@ static void kgsl_free_secure_system_pages(struct kgsl_memdesc *memdesc)
 	struct scatterlist *sg;
 	int ret;
 	int order = get_order(PAGE_SIZE);
-	
+
 	if (memdesc->priv & KGSL_MEMDESC_MAPPED)
 		return;
-	
+
 	ret = unlock_sgt(memdesc->sgt);
-	
+
 	if (ret) {
 		/*
 		 * Unlock of the secure buffer failed. This buffer will
@@ -1008,12 +1008,12 @@ static void kgsl_free_secure_system_pages(struct kgsl_memdesc *memdesc)
 static void kgsl_free_secure_pool_pages(struct kgsl_memdesc *memdesc)
 {
 	int ret;
-	
+
 	if (memdesc->priv & KGSL_MEMDESC_MAPPED)
 		return;
-		
+
 	ret = unlock_sgt(memdesc->sgt);
-	
+
 	if (ret) {
 		/*
 		 * Unlock of the secure buffer failed. This buffer will
@@ -1041,10 +1041,10 @@ static void kgsl_free_pool_pages(struct kgsl_memdesc *memdesc)
 {
 	kgsl_paged_unmap_kernel(memdesc);
 	WARN_ON(memdesc->hostptr);
-	
+
 	if (memdesc->priv & KGSL_MEMDESC_MAPPED)
 		return;
-		
+
 	atomic_long_sub(memdesc->size, &kgsl_driver.stats.page_alloc);
 
 	kgsl_pool_free_pages(memdesc->pages, memdesc->page_count);
@@ -1061,10 +1061,10 @@ static void kgsl_free_system_pages(struct kgsl_memdesc *memdesc)
 
 	kgsl_paged_unmap_kernel(memdesc);
 	WARN_ON(memdesc->hostptr);
-	
+
 	if (memdesc->priv & KGSL_MEMDESC_MAPPED)
 		return;
-		
+
 	atomic_long_sub(memdesc->size, &kgsl_driver.stats.page_alloc);
 
 	for (i = 0; i < memdesc->page_count; i++) {
