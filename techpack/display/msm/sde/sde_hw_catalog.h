@@ -872,10 +872,12 @@ enum sde_clk_ctrl_type {
 /* struct sde_clk_ctrl_reg : Clock control register
  * @reg_off:           register offset
  * @bit_off:           bit offset
+ * @val:               current bit value
  */
 struct sde_clk_ctrl_reg {
 	u32 reg_off;
 	u32 bit_off;
+	int val;
 };
 
 /* struct sde_mdp_cfg : MDP TOP-BLK instance info
@@ -1694,8 +1696,10 @@ static inline void sde_hw_catalog_irq_offset_list_delete(
  */
 static inline bool sde_hw_sspp_multirect_enabled(const struct sde_sspp_cfg *cfg)
 {
-	return test_bit(SDE_SSPP_SMART_DMA_V1, &cfg->features) ||
+	return (test_bit(SDE_SSPP_SMART_DMA_V1, &cfg->features) ||
 			 test_bit(SDE_SSPP_SMART_DMA_V2, &cfg->features) ||
-			 test_bit(SDE_SSPP_SMART_DMA_V2p5, &cfg->features);
+			 test_bit(SDE_SSPP_SMART_DMA_V2p5, &cfg->features))
+		&& !(test_bit(SDE_SSPP_CSC_10BIT, &cfg->features) ||
+		     test_bit(SDE_SSPP_CSC, &cfg->features));
 }
 #endif /* _SDE_HW_CATALOG_H */
