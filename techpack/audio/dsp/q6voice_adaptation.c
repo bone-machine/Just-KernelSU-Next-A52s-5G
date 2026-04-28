@@ -1454,28 +1454,27 @@ static int sec_voice_send_bt_rvc_vol_cmd(struct voice_data *v, int vol)
 	cvp_handle = voice_get_cvp_handle(v);
 
 	/* fill in the header */
-	cvp_bt_rvc_vol_cmd.hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
-				APR_HDR_LEN(APR_HDR_SIZE),
-				APR_PKT_VER);
-	cvp_bt_rvc_vol_cmd.hdr.pkt_size = APR_PKT_SIZE(APR_HDR_SIZE,
-		sizeof(cvp_bt_rvc_vol_cmd) - APR_HDR_SIZE);
+	cvp_bt_rvc_vol_cmd.hdr.hdr_field =
+		APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD, APR_HDR_LEN(APR_HDR_SIZE),
+			      APR_PKT_VER);
+	cvp_bt_rvc_vol_cmd.hdr.pkt_size =
+		APR_PKT_SIZE(APR_HDR_SIZE, sizeof(cvp_bt_rvc_vol_cmd) - APR_HDR_SIZE);
 	cvp_bt_rvc_vol_cmd.hdr.src_port = SEC_ADAPTATAION_VOICE_SRC_PORT;
 	cvp_bt_rvc_vol_cmd.hdr.dest_port = cvp_handle;
 	cvp_bt_rvc_vol_cmd.hdr.token = 0;
-	cvp_bt_rvc_vol_cmd.hdr.opcode =
-		q6common_is_instance_id_supported() ? VSS_ICOMMON_CMD_SET_UI_PROPERTY_V2 :
-				VSS_ICOMMON_CMD_SET_UI_PROPERTY;
+	cvp_bt_rvc_vol_cmd.hdr.opcode = VSS_ICOMMON_CMD_SET_PARAM_V2;
+	cvp_bt_rvc_vol_cmd.cvp_set_bt_rvc_vol.mem_handle = 0;
+	cvp_bt_rvc_vol_cmd.cvp_set_bt_rvc_vol.mem_address = 0;
+	cvp_bt_rvc_vol_cmd.cvp_set_bt_rvc_vol.mem_size = 0x10;
 	cvp_bt_rvc_vol_cmd.cvp_set_bt_rvc_vol.module_id = VOICE_VOICEMODE_MODULE;
-	cvp_bt_rvc_vol_cmd.cvp_set_bt_rvc_vol.instance_id =
-		INSTANCE_ID_0;
 	cvp_bt_rvc_vol_cmd.cvp_set_bt_rvc_vol.param_id = VOICE_BT_RVC_VOL_PARAM;
 	cvp_bt_rvc_vol_cmd.cvp_set_bt_rvc_vol.param_size = 4;
 	cvp_bt_rvc_vol_cmd.cvp_set_bt_rvc_vol.reserved = 0;
-	cvp_bt_rvc_vol_cmd.cvp_set_bt_rvc_vol.enable = vol;
+	cvp_bt_rvc_vol_cmd.cvp_set_bt_rvc_vol.volume = vol;
 	cvp_bt_rvc_vol_cmd.cvp_set_bt_rvc_vol.reserved_field = 0;
 
 	pr_info("%s: volume index = %d\n", __func__,
-					cvp_bt_rvc_vol_cmd.cvp_set_bt_rvc_vol.enable);
+					cvp_bt_rvc_vol_cmd.cvp_set_bt_rvc_vol.volume);
 
 	atomic_set(&this_cvp.state, 1);
 	ret = apr_send_pkt(this_cvp.apr, (uint32_t *) &cvp_bt_rvc_vol_cmd);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -1716,16 +1716,11 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 		if (data->opcode == APR_BASIC_RSP_RESULT) {
 			pr_debug("%s: APR_BASIC_RSP_RESULT id 0x%x\n",
 				__func__, payload[0]);
-
-			if (!((client_id != ADM_CLIENT_ID_SOURCE_TRACKING) &&
-			     ((payload[0] == ADM_CMD_SET_PP_PARAMS_V5) ||
-			      (payload[0] == ADM_CMD_SET_PP_PARAMS_V6)))) {
-				if (data->payload_size <
-						(2 * sizeof(uint32_t))) {
-					pr_err("%s: Invalid payload size %d\n",
-						__func__, data->payload_size);
-					return 0;
-				}
+			if (data->payload_size <
+					(2 * sizeof(uint32_t))) {
+				pr_err("%s: Invalid payload size %d\n",
+					__func__, data->payload_size);
+				return 0;
 			}
 
 			if (payload[1] != 0) {
@@ -3938,10 +3933,14 @@ void adm_copp_mfc_cfg(int port_id, int copp_idx, int dst_sample_rate)
 		pr_err("%s: unable to get channal map\n", __func__);
 		goto fail_cmd;
 	}
-
-	for (i = 0; i < mfc_cfg.num_channels; i++)
-		mfc_cfg.channel_type[i] =
+	if (mfc_cfg.num_channels <= AUDPROC_MFC_OUT_CHANNELS_MAX) {
+		for (i = 0; i < mfc_cfg.num_channels; i++)
+			mfc_cfg.channel_type[i] =
 			(uint16_t) open.dev_channel_mapping[i];
+	} else {
+ 		pr_err("%s: size of  num_channels is greater than channel type \n", __func__);
+		goto fail_cmd;
+	}
 
 	atomic_set(&this_adm.copp.stat[port_idx][copp_idx], -1);
 
