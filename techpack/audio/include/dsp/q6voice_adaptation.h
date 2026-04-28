@@ -91,6 +91,18 @@ struct vss_icommon_cmd_get_param_v3_t {
 	uint32_t param_id;
 } __packed;
 
+struct vss_icommon_cmd_set_bt_rvc_t {
+	uint32_t mem_handle;
+	uint64_t mem_address;
+	uint32_t mem_size;
+	uint32_t module_id;
+	uint32_t param_id;
+	uint16_t param_size;
+	uint16_t reserved;
+	uint16_t volume;
+	uint16_t reserved_field;
+} __packed;
+
 struct cvs_set_loopback_enable_cmd {
 	struct apr_hdr hdr;
 	uint32_t mem_handle;
@@ -170,7 +182,7 @@ struct cvp_set_voice_isolation_cmd {
 
 struct cvp_set_bt_rvc_vol_cmd {
 	struct apr_hdr hdr;
-	struct vss_icommon_cmd_set_ui_property_v2_t cvp_set_bt_rvc_vol;
+	struct vss_icommon_cmd_set_bt_rvc_t cvp_set_bt_rvc_vol;
 } __packed;
 
 int sec_voice_set_adaptation_sound(uint16_t mode,
