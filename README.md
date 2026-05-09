@@ -1,16 +1,13 @@
-# bone-machine-sm7325-kernel
-Stock Android Kernel for the Samsung A52s 5G (One UI only), with backported changes from A73 source code, KernelSU-Next root solution, disabled Samsung Knox, debugging and logging features, and switchable SELinux policy.
+# bone-machine's custom Android Kernel for the Samsung A52s 5G (Snapdragon 778G - SM7325)
+Custom Android Kernel for the Samsung A52s 5G (AOSP/One UI), with backported changes from the original A73 5G kernel source code. Including KSU-Next as root solution, GPU tweaks, CPU mask features and more.
 
 # How to build
 
 ### Clang
 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r530567.tar.gz
 
-### GCC
-https://developer.arm.com/-/media/Files/downloads/gnu/14.3.rel1/binrel/arm-gnu-toolchain-14.3.rel1-x86_64-aarch64-none-linux-gnu.tar.xz
-
 ### Export PATH
-`export PATH="/{path-to-your-clang-bin-folder}/clang/bin:/{path-to-your-gcc-bin-folder}/bin:$PATH"`
+`export PATH="/{path-to-your-clang-bin-folder}/clang/bin:$PATH"`
 
 ### Make defconfig
 `make O=$(pwd)/out ARCH=arm64 vendor/a52sxq_kor_single_defconfig`
@@ -21,13 +18,11 @@ make -j$(nproc) \
   O=$(pwd)/out \
   ARCH=arm64 \
   CC=clang \
-  LD=ld.lld \
-  NM=llvm-nm \
-  OBJCOPY=llvm-objcopy \
-  CLANG_TRIPLE=aarch64-none-linux-gnu- \
   LLVM=1 \
   LLVM_IAS=1 \
-  CROSS_COMPILE=llvm- \
+  CROSS_COMPILE=aarch64-none-linux-gnu- \
+  KBUILD_BUILD_USER=example \
+  KBUILD_BUILD_HOST=kernel \
   CONFIG_SECTION_MISMATCH_WARN_ONLY=y
 ```
 
@@ -37,7 +32,7 @@ make -j$(nproc) \
 
 `Link-Time Optimization (LTO)` 2
 
-`Use Clang's Control Flow Integrity (CFI) (CFI_CLANG)` y
+`Use Clang's Control Flow Integrity (CFI) (CFI_CLANG)` n (or yes if not integrating KSU-Next root solution)
 
 `Use CFI shadow to speed up cross-module checks (CFI_CLANG_SHADOW)` y
 
@@ -46,8 +41,6 @@ make -j$(nproc) \
 `Use RELR relocation packing (RELR)` y
 
 `Use Clang's ThinLTO (EXPERIMENTAL) (THINLTO)` y
-
-Use `modules=0` to skip module compilation or add Image \ ?
 
 ### Prepare module files
 `mkdir -p modules_for_zip`
@@ -86,7 +79,7 @@ Open header file and replace first line with `SRPUE26A001` (probably not necessa
 
 `cpio -idm < ../ramdisk.cpio`
 
-`sudo chown -R $(whoami):$(whoami)`
+`sudo chown -R $(whoami):$(whoami) .`
 
 `rm -rf lib/modules/5.4-gki/*`
 
@@ -106,7 +99,7 @@ You can find `modules.*` files for the default defconfig in the kernel source tr
 
 `cd ..`
 
-`sudo rm -rf /ramdisk`
+`sudo rm -rf ramdisk/`
 
 Repack with `magiskboot repack vendor_boot.img` and place in flashable .zip file `images` folder, change its name to `vendor_boot.img`
 
@@ -114,14 +107,14 @@ Repack with `magiskboot repack vendor_boot.img` and place in flashable .zip file
 `zip -r -9 {flashable-kernel-zip-file-name}.zip *` and flash it on your recovery environment
 
 ### Start-over
-`make ARCH=arm64 mrproper`
+`make ARCH=arm64 mrproper CONFIG_KSU_MANUAL_HOOK=y` (for whatever reason, KSU-Next needs that last flag enabled)
 
-`rm -rf out`
+`rm -rf out/`
 
 ## Update Git Submodules
 `git submodule update --init --recursive`
 
-### Kernel su repo update example
+### Update KSU-Next definitions
 ```
 cd KernelSU-Next
 git fetch --tags
@@ -132,7 +125,9 @@ git commit -m "Update KernelSU-Next submodule to v1.0.10"
 ```
 
 # Credits
-salvogiangri, utkustnr, RisenID, saadelasfur, Simon
+salvogiangri (kernel, UN1CA ROM), utkustnr (kernel), RisenID (kernel), saadelasfur (kernel), Simon1511 (AOSP related changes), MySelly (kernel, Nothing Phone 1), backslashxx (Manual hook implementation for KSU-Next), ravindu644 (kernel compilation), Samsung (original kernel source code)
+
+*There are several commits which do not have the original author's name. In most cases, you can find the source for each change inside each commit. In any case, I do not take credit for them.
 
 # Resources
 https://github.com/Mesa-Labs-Archive/android_kernel_samsung_sm7325/
@@ -143,52 +138,12 @@ https://github.com/RisenID/kernel_samsung_ascendia_sm7325
 
 https://github.com/saadelasfur/android_kernel_samsung_sm7325/
 
+https://github.com/LineageOS/android_kernel_samsung_sm7325
+
+https://github.com/crdroidandroid/android_kernel_nothing_sm7325/
+
+https://github.com/backslashxx/KernelSU/issues/5#event-24583207399
+
 https://github.com/ravindu644/Android-Kernel-Tutorials
 
 https://opensource.samsung.com/uploadList?menuItem=mobile (SM-A736B, SM-A528B, SM-A528N)
-
-## Legacy
-```
-make -j$(nproc) \
-  O=$(pwd)/out \
-  ARCH=arm64 \
-  LLVM=1 \
-  LLVM_IAS=1 \
-  CONFIG_SECTION_MISMATCH_WARN_ONLY=y
-```
-
-`export PATH="/{path-to-your-clang-bin-folder}/clang/bin:$PATH"`
-
-`mkdir -p /tmp/depmod-temp/lib/modules/5.4.254`
-
-`cp {kernel-source-directory}/out/modules_for_zip/*.ko /tmp/depmod-temp/lib/modules/5.4.254/`
-
-`depmod -b /tmp/depmod-temp -r 5.4.254`
-
-`sed -i 's/\(^\| \)\([^: ]*\.ko\)/\1\/vendor\/lib\/modules\/\2/g' /tmp/depmod-temp/lib/modules/5.4.254/modules.dep`
-
-Regex `(:\s*).*`
-
-### GCC
-`find modules_for_zip -type f -name "*.ko" -exec aarch64-none-linux-gnu-strip --strip-unneeded {} \;`
-
-```
-make -j$(nproc) -C $(pwd) O=$(pwd)/out \
-  DTC_EXT=$(pwd)/tools/dtc CONFIG_BUILD_ARM64_DT_OVERLAY=y \
-  ARCH=arm64 \
-  CC=clang \
-  CROSS_COMPILE=aarch64-none-linux-gnu- \
-  CLANG_TRIPLE=aarch64-none-linux-gnu- \
-  CONFIG_SECTION_MISMATCH_WARN_ONLY=y \
-  vendor/a52sxq_kor_single_defconfig
-```
-
-```
-make -j$(nproc) -C $(pwd) O=$(pwd)/out \
-  DTC_EXT=$(pwd)/tools/dtc CONFIG_BUILD_ARM64_DT_OVERLAY=y \
-  ARCH=arm64 \
-  CC=clang \
-  CROSS_COMPILE=aarch64-none-linux-gnu- \
-  CLANG_TRIPLE=aarch64-none-linux-gnu- \
-  CONFIG_SECTION_MISMATCH_WARN_ONLY=y
-```
