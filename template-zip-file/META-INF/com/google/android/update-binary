@@ -1,12 +1,11 @@
 #!/sbin/sh
 # Shell Script EDIFY Replacement: Recovery Flashable Zip
-# osm0sis @ XDAdevelopers
-# salvogiangri @ XDAdevelopers
-# Frax3r @ XDAdevelopers
+# Credits to: osm0sis, salvogiangri, utkustnr/Frax3r, Simon1511, RisenID, saadelasfur, MySelly
+# See https://github.com/bone-machine/android_kernel_samsung_sm7325_a52s_5g
 
 OUTFD=/proc/self/fd/$2;
 ZIPFILE="$3";
-TMPDIR="/cache/lux";
+TMPDIR="/cache/rios";
 
 package_extract_dir() {
   local entry outfile;
@@ -73,17 +72,18 @@ write_raw_image() { dd if="$1" of="$2"; }
 set_progress() { echo "set_progress $1" >> $OUTFD; }
 
 ui_print " ";
-ui_print "********************************************";
-ui_print "          Generic Kernel Installer          ";
-ui_print "                          by Frax3r         ";
-ui_print "                                            ";
-ui_print "          Presenting LUX & RIO...           ";
-ui_print "********************************************";
+ui_print "***************************************************";
+ui_print "* bone-machine's custom kernel for A52s 5G (AOSP) *";
+ui_print "* KernelSU-Next v3.2.0-legacy                     *";
+ui_print "* Credits: salvogiangri, Frax3r, Simon1511,       *";
+ui_print "* RisenID, saadelasfur, and MySelly               *";
+ui_print "***************************************************";
 ui_print " ";
+
 set_progress 0
 
-if ! getprop ro.boot.bootloader | grep -qE "A736|A528|M526"; then
-  ui_print "- Device is not an A73, A52s or M52, aborting...";
+if ! getprop ro.boot.bootloader | grep -qE "A528"; then
+  ui_print "- Device is not an A52s 5G, aborting...";
   exit 1;
 fi
 
@@ -95,50 +95,23 @@ set_progress 10;
 
 ui_print "- Flashing boot.img...";
 write_raw_image "$TMPDIR/boot.img" "/dev/block/bootdevice/by-name/boot";
-set_progress 20;
+set_progress 25;
+
 ui_print "- Flashing dtbo.img...";
 write_raw_image "$TMPDIR/dtbo.img" "/dev/block/bootdevice/by-name/dtbo";
-set_progress 30;
-ui_print "- Flashing vendor_boot.img...";
-write_raw_image "$TMPDIR/vendor_boot.img" "/dev/block/bootdevice/by-name/vendor_boot";
-set_progress 40;
-
-ui_print "- Mounting /vendor...";
-if is_mounted vendor; then umount /vendor; fi
-mount -o rw /dev/block/mapper/vendor /vendor;
 set_progress 50;
 
-ui_print "- Checking if modules can be extracted...";
-if ! is_mounted vendor || is_mounted 'vendor.*(erofs|f2fs)'; then
-  ui_print "- Read-Only filesystem detected, skipping...";
-  set_progress 80;
-else
-  ui_print "- Read-Write filesystem detected, proceeding...";
-  set_progress 60;
-  [ -f /vendor/bin/install-recovery.sh ] && rm -f "/vendor/bin/install-recovery.sh";
-  [ -f /vendor/etc/init/vendor_flash_recovery.rc ] && rm -f "/vendor/etc/init/vendor_flash_recovery.rc";
-  [ -f /vendor/recovery-from-boot.p ] && rm -f "/vendor/recovery-from-boot.p";
-  [ -f /vendor/bin/vendor_modprobe.sh ] && rm -f "/vendor/bin/vendor_modprobe.sh";
-  rm -rf /vendor/lib/modules/*;
-  ui_print "- Extracting...";
-  package_extract_dir "vendor" "/vendor";
-  set_metadata "/vendor/bin/vendor_modprobe.sh" uid "0" gid "2000" mode "0755" selabel "u:object_r:vendor_modinstall-sh_exec:s0";
-  for file in /vendor/lib/modules/*; do
-    set_metadata $file uid "0" gid "0" mode "0644" selabel "u:object_r:vendor_file:s0";
-  done;
-  set_progress 80;
-fi
+ui_print "- Flashing vendor_boot.img...";
+write_raw_image "$TMPDIR/vendor_boot.img" "/dev/block/bootdevice/by-name/vendor_boot";
+set_progress 75;
 
 ui_print "- Cleaning up...";
 rm -rf "$TMPDIR";
-umount /vendor;
-set_progress 100;
+set_progress 90;
 
 ui_print " ";
-ui_print "********************************************";
-ui_print " Flashing completed.                        ";
-ui_print "     Make sure to check the UN1CA project.  ";
-ui_print " Special Thanks to Salvogiangri             ";
-ui_print " And Simon1511                              ";
-ui_print "********************************************";
+ui_print "Done! Enjoy the kernel!";
 ui_print " ";
+ui_print "Be sure to wipe cache/dalvik if you encounter any issues.";
+ui_print " ";
+set_progress 100;
