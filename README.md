@@ -108,7 +108,7 @@ Open header file and replace first line with `SRPUE26A001` (probably not necessa
 
 Place .ko files from `modules_for_zip/` and `modules.alias`, `modules.dep`, `modules.softdep` and `modules.load` in `lib/modules/`, make sure and `modules.dep` entry lines for each module points to `/lib/modules/` and not `/vendor/lib/modules/`
 
-You can find `modules.*` files for the default defconfig (AOSP-KSU-Next) in the `template-zip-file` folder at the kernel root directory (though you should have your modules files in `modules_for_zip` if it compiled correctly)
+**Note**: You can find `modules.*` files (`modules.alias`, etc.) in the `template-zip-file` folder at the kernel root directory, along with .ko module files, built for the `ksu-next-aosp` branch (though you shouldn't need them if your build was successful, see `modules_for_zip/` steps)
 
 `cp -rf {kernel-source-directory}/firmware/tsp_stm/fts5cu56a_a52sxq* lib/firmware/tsp_stm/` (not necessary if using `vendor_boot.img` from `template-zip-file` folder, since it is already present)
 
