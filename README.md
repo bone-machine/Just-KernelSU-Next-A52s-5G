@@ -1,22 +1,22 @@
 # bone-machine's custom Android Kernel for the Samsung A52s 5G (Snapdragon 778G - SM7325)
 
+Based from **A528NKSU4GXE1** with backported changes from A73 5G (**A736BXXUAFYE6**)
+
+Linux v5.4.289, built with Clang v19.0 (plus other compilation optimizations)
+
 ### Features
 
 - Implemented KSU-Next (**v3.2.0-legacy**) as root solution, with manual hooks
 - Supports both AOSP and One UI ROMs (works on Android 16, should work on other versions)
 - Added new GPU minimum frequency step, plus reducing voltage a bit for all other steps and idle timeout
-- Enabled KSWAPD CPU mask feature from A73 5G
+- Enabled KSWAPD CPU mask feature (used in A73 5G)
 - Switched ZRAM compression algorithm to LZ4KD
-- Disabled several kernel debugging tools, flags and features
-- Enabled CONFIG_TMPFS_XATTR for mountify KernelSU module mounting compatibility
+- Disabled several kernel debugging tools, flags, and features
+- Enabled CONFIG_TMPFS_XATTR for `mountify` KernelSU module mounting compatibility
 - Disabled Samsung Knox
 - Switchable SELinux policy
 
 And more (check commit log)
-
-Based from **A528NKSU4GXE1** with backported changes from **A736BXXUAFYE6**
-
-Linux v5.4.289, built with Clang v19.0 (plus other compilation optimizations)
 
 # How to build
 
@@ -134,10 +134,10 @@ Repack with `magiskboot repack vendor_boot.img` and place in flashable .zip file
 
 `rm -rf out/`
 
-## Update Git Submodules
+## Update git submodules
 `git submodule update --init --recursive`
 
-### Update KSU-Next definitions
+## Update KSU-Next definitions
 ```
 cd KernelSU-Next
 git fetch --tags
@@ -147,6 +147,16 @@ git add KernelSU-Next
 git commit -m "Update KernelSU-Next to v3.2.0-legacy"
 ```
 
+## KSU-Next and other notes
+
+Use [mountify](https://github.com/backslashxx/mountify) as the primary metamodule
+
+Update GPU drivers with this [KSU module](https://t.me/adrenolabsupport/242/1157)
+
+Use [Zygisk-Next](https://github.com/Dr-TSNG/ZygiskNext), and this version of [LSPosed](https://t.me/LSPosed/311) if needed (check for newer versions on that Telegram group)
+
+For ad-blocking, just use [bindhosts](https://github.com/bindhosts/bindhosts)
+
 # Credits (*)
 **salvogiangri** (kernel, UN1CA ROM), **utkustnr/Frax3r** (kernel, update-binary shell script and README.md instructions), **RisenID** (kernel), **saadelasfur** (kernel), **Simon1511** (AOSP related changes), **MySelly** (crDroid's Nothing-Phone-1 kernel), **rifsxd** (KSU-Next), **backslashxx** (Manual hook implementation for KSU-Next), **osm0sis** (Recovery Flashable Zip shell script), **ravindu644** (kernel compilation), **Samsung** (original kernel source code)
 
@@ -154,6 +164,8 @@ git commit -m "Update KernelSU-Next to v3.2.0-legacy"
 
 # Resources
 https://github.com/Mesa-Labs-Archive/android_kernel_samsung_sm7325/
+
+https://github.com/salvogiangri/android_kernel_samsung_sm7325
 
 https://github.com/utkustnr/android_kernel_samsung_sm7325/
 
