@@ -6,19 +6,19 @@ Linux v5.4.289, built with Clang v19.0 (plus other compilation optimizations)
 
 ### Features
 
-- Implemented KSU-Next (**v3.2.0-legacy**) as root solution, with manual hooks
+- Implemented KSU-Next (**v3.2.0-legacy**) as root solution, using manual hooks
 - Supports both AOSP and One UI ROMs (works on Android 16, should work on other versions)
-- Added new GPU minimum frequency step, plus reducing voltage a bit for all other steps and idle timeout
-- Enabled KSWAPD CPU mask feature (used in A73 5G)
+- Added new GPU minimum frequency step, plus reducing voltage and idle timeout
 - Switched ZRAM compression algorithm to LZ4KD
 - Disabled several kernel debugging tools, flags, and features
-- Enabled CONFIG_TMPFS_XATTR for `mountify` KernelSU module mounting compatibility
+- Enabled CONFIG_TMPFS_XATTR for [mountify](https://github.com/backslashxx/mountify) KernelSU module mounting compatibility
 - Disabled Samsung Knox
 - Switchable SELinux policy
 
-And more (check commit log)
+And other minor CPU and RAM tweaks, etc. (check commit log)
 
 # How to build
+[Check this tutorial for any concerns, or if you don't know where, or how, to start](https://github.com/ravindu644/Android-Kernel-Tutorials)
 
 ### Clang
 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r530567.tar.gz
@@ -73,7 +73,7 @@ If asked, use these options
 `find modules_for_zip -type f -name "*.ko" -exec llvm-strip --strip-unneeded {} \;`
 
 ### Prepare flashable .zip file
-[Magiskboot](https://github.com/topjohnwu/Magisk/releases/download/v29.0/Magisk-v29.0.apk)
+[Magiskboot](https://github.com/topjohnwu/Magisk/releases/download/v30.7/Magisk-v30.7.apk)
 
 [avbtool](https://android.googlesource.com/platform/external/avb/+/refs/heads/main/avbtool.py?format=TEXT)
 
@@ -86,10 +86,10 @@ Erase footer from both of them with `avbtool erase_footer --image {file-image}.i
 
 Copy `Image` file, replace with `kernel` file
 
-Repack with `magiskboot repack boot.img` and place in flashable .zip file `images` folder, change its name to `boot.img`
+Repack with `magiskboot repack boot.img` and place the generated .img file in `template-zip-file/images/`, change its name to `boot.img`
 
 ### dtbo.img
-Place `dtbo.img` from `out/arch/arm64/boot/` in `images` folder of the flashable .zip file
+Place `dtbo.img` from `out/arch/arm64/boot/` in `template-zip-file/images/`
 
 ### vendor_boot.img
 `magiskboot unpack -h vendor_boot.img`
@@ -108,7 +108,9 @@ Open header file and replace first line with `SRPUE26A001` (probably not necessa
 
 Place .ko files from `modules_for_zip/` and `modules.alias`, `modules.dep`, `modules.softdep` and `modules.load` in `lib/modules/`, make sure and `modules.dep` entry lines for each module points to `/lib/modules/` and not `/vendor/lib/modules/`
 
-**Note**: You can find `modules.*` files (`modules.alias`, etc.) in the `template-zip-file` folder at the kernel root directory, along with .ko module files, built for the `ksu-next-aosp` branch (though you shouldn't need them if your build was successful, see `modules_for_zip/` steps)
+**Note**: You can find `modules.*` files (`modules.alias`, etc.) in the `template-zip-file` folder at the kernel root directory, along with .ko module files, built for the `ksu-next-aosp` branch (though you shouldn't need them if your build was successful, see `modules_for_zip/` steps).
+
+Also, if using `vendor_boot.img` from `template-zip-file` folder it already has the proper `modules.*` files (assuming you did not add or remove any modules)
 
 `cp -rf {kernel-source-directory}/firmware/tsp_stm/fts5cu56a_a52sxq* lib/firmware/tsp_stm/` (not necessary if using `vendor_boot.img` from `template-zip-file` folder, since it is already present)
 
@@ -124,10 +126,14 @@ Place .ko files from `modules_for_zip/` and `modules.alias`, `modules.dep`, `mod
 
 `sudo rm -rf ramdisk/`
 
-Repack with `magiskboot repack vendor_boot.img` and place in flashable .zip file `images` folder, rename to `vendor_boot.img`
+Repack with `magiskboot repack vendor_boot.img` and place the generated .img file in `template-zip-file/images/`, rename it to `vendor_boot.img`
 
 ### Make flashable .zip file
-`zip -r -9 {flashable-kernel-zip-file-name}.zip *` and flash it on your recovery environment
+Go to `template-zip-file` folder and run the following command:
+
+`zip -r -9 {flashable-kernel-zip-file-name}.zip META-INF/ images/`
+
+Now flash the .zip file in your recovery environment
 
 ### Start-over
 `make ARCH=arm64 mrproper CONFIG_KSU_MANUAL_HOOK=y` (for whatever reason, KSU-Next needs that last flag enabled)
@@ -151,14 +157,14 @@ git commit -m "Update KernelSU-Next to v3.2.0-legacy"
 
 Use [mountify](https://github.com/backslashxx/mountify) as the primary metamodule
 
-Update GPU drivers with this [KSU module](https://t.me/adrenolabsupport/242/1157)
+Update GPU drivers with this [KSU module](https://t.me/adrenolabsupport/242/3985)
 
-Use [Zygisk-Next](https://github.com/Dr-TSNG/ZygiskNext), and this version of [LSPosed](https://t.me/LSPosed/311) if needed (check for newer versions on that Telegram group)
+Use [Zygisk-Next](https://github.com/Dr-TSNG/ZygiskNext), and this version of [LSPosed](https://t.me/LSPosed/314) if needed (check for newer versions on that Telegram group)
 
 For ad-blocking, just use [bindhosts](https://github.com/bindhosts/bindhosts)
 
 # Credits (*)
-**salvogiangri** (kernel, UN1CA ROM), **utkustnr/Frax3r** (kernel, update-binary shell script and README.md instructions), **RisenID** (kernel), **saadelasfur** (kernel), **Simon1511** (AOSP related changes), **MySelly** (crDroid's Nothing-Phone-1 kernel), **rifsxd** (KSU-Next), **backslashxx** (Manual hook implementation for KSU-Next), **osm0sis** (Recovery Flashable Zip shell script), **ravindu644** (kernel compilation), **Samsung** (original kernel source code)
+**salvogiangri** (kernel, UN1CA ROM), **utkustnr/Frax3r** (kernel, update-binary shell script and README.md instructions), **RisenID** (kernel), **saadelasfur** (kernel), **Simon1511** (AOSP related changes), **MySelly** (crDroid's Nothing-Phone-1 kernel), **Haky86** (kernel A23 5G), **DrRoot85** (kernel S23), **rifsxd** (KSU-Next), **backslashxx** (Manual hook implementation for KSU-Next), **osm0sis** (Recovery Flashable Zip shell script), **ravindu644** (kernel compilation), **Samsung** (original kernel source code)
 
 <sub>* There are several commits which do not have the original author's name. In most cases, you can find the source for each change inside each commit. In any case, I do not take credit for them.</sub>
 
@@ -178,6 +184,10 @@ https://github.com/LineageOS/android_kernel_samsung_sm7325
 https://github.com/crdroidandroid/android_kernel_nothing_sm7325/
 
 https://github.com/KernelSU-Next/KernelSU-Next
+
+https://github.com/Haky86/android_kernel_samsung_sm6375
+
+https://github.com/DrRoot85/kernel_samsung_sm8550-commom
 
 https://github.com/backslashxx/KernelSU/issues/5#event-24583207399
 
