@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
  *
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _UAPI_MSM_IPA_H_
@@ -151,6 +151,9 @@
 #define IPA_IOCTL_QUERY_CACHED_DRIVER_MSG       94
 #define IPA_IOCTL_SET_EXT_ROUTER_MODE           95
 #define IPA_IOCTL_ADD_DEL_DSCP_PCP_MAPPING      96
+#define IPA_IOCTL_SEND_VLAN_MUXID_MAPPING       97
+#define IPA_IOCTL_SEND_TUNNEL_TEMPLATE_INFO       98
+#define IPA_IOCTL_QUERY_TUNNEL_FEATURE       99
 /**
  * max size of the header to be inserted
  */
@@ -1137,6 +1140,48 @@ static inline const char *exception_type_as_str(enum ipa_exception_type t)
 		"???";
 }
 
+/**
+ * Macro ipa_exception_type_pppoe
+ *
+ * This macro is for describing which field is to be looked at for
+ * exception path consideration.
+ *
+ * NOTE 1: The field implies an offset into the packet under
+ *         consideration.  This offset will be calculated on behalf of
+ *         the user of this API.
+ *
+ * NOTE 2: When exceptions are generated/sent in an ipa_exception
+ *         structure, they will considered to be from the upload
+ *         perspective. And when appropriate, a corresponding, and
+ *         perhaps inverted, downlink exception will be automatically
+ *         created on the callers behalf.  As an example: If a
+ *         FIELD_UDP_SRC_PORT is sent, an uplink exception will be
+ *         created for udp source port, and a corresponding
+ *         FIELD_UDP_DST_PORT will be automatically created for the
+ *         downlink.
+ */
+#define FIELD_IP_PROTOCOL_PPPOE (FIELD_ETHER_TYPE + 1)
+#define FIELD_TCP_SRC_PORT_PPPOE (FIELD_IP_PROTOCOL_PPPOE + 1)
+#define FIELD_TCP_DST_PORT_PPPOE (FIELD_TCP_SRC_PORT_PPPOE + 1)
+#define FIELD_UDP_SRC_PORT_PPPOE (FIELD_TCP_DST_PORT_PPPOE + 1)
+#define FIELD_UDP_DST_PORT_PPPOE (FIELD_UDP_SRC_PORT_PPPOE + 1)
+#define FIELD_ETHER_TYPE_PPPOE   (FIELD_UDP_DST_PORT_PPPOE + 1)
+#define FIELD_PPPOE_MAX	(FIELD_ETHER_TYPE_PPPOE + 1)
+
+/* Function to read PPPoE exception in string format */
+static inline const char *pppoe_exception_type_as_str(uint32_t t)
+{
+	return
+		(t == FIELD_IP_PROTOCOL_PPPOE)  ? "pppoe_ip_protocol"  :
+		(t == FIELD_TCP_SRC_PORT_PPPOE) ? "pppoe_tcp_src_port" :
+		(t == FIELD_TCP_DST_PORT_PPPOE) ? "pppoe_tcp_dst_port" :
+		(t == FIELD_UDP_SRC_PORT_PPPOE) ? "pppoe_udp_src_port" :
+		(t == FIELD_UDP_DST_PORT_PPPOE) ? "pppoe_udp_dst_port" :
+		(t == FIELD_ETHER_TYPE_PPPOE)   ? "pppoe_ether_type"   :
+		(t == FIELD_PPPOE_MAX)          ? "pppoe_max"          :
+		"???";
+}
+
 #define IP_TYPE_EXCEPTION(x) \
 	((x) == FIELD_IP_PROTOCOL  || \
 	  (x) == FIELD_TCP_SRC_PORT || \
@@ -1217,6 +1262,7 @@ struct ipa_field_val_equation_gen {
  * @payload_length: Payload length.
  * @ext_attrib_mask: Extended attributes.
  * @l2tp_udp_next_hdr: next header in L2TP tunneling
+ * @p_exception : exception to enable for mpls-pppoe
  * @field_val_equ: for finding a value at a particular offset
  */
 struct ipa_rule_attrib {
@@ -1262,7 +1308,7 @@ struct ipa_rule_attrib {
 	__u16 payload_length;
 	__u32 ext_attrib_mask;
 	__u8 l2tp_udp_next_hdr;
-	__u8 padding1;
+	__u8 p_exception;
 	struct ipa_field_val_equation_gen fld_val_eq;
 };
 
@@ -1728,7 +1774,7 @@ struct IpaDscpVlanPcpMap_t {
 	uint8_t  num_vlan;   /* indicate how many vlans valid vlan above */
 	uint8_t  num_s_vlan; /* indicate how many vlans valid in s_vlan below */
 	uint8_t  dscp_opt;   /* indicates if dscp is required or optional */
-	uint8_t  pad1; /* for alignment */
+	uint8_t  tunnel_id;  /* tunnel id */
 	/*
 	 * The same lookup scheme, using vlan[] above, is used for
 	 * generating the first index of mpls below; and in addition,
@@ -1747,13 +1793,141 @@ struct IpaDscpVlanPcpMap_t {
 	 * mpls_val_sorted is in ascending order, by mpls label values in mpls array
 	 * vlan_c and vlan_s are vlan id values that are corresponding to the mpls label
 	 */
-	uint16_t pad2; /* for alignment */
-	uint8_t  pad3; /* for alignment */
+	uint16_t del_add_vlan_id; /* vlan id to add or del */
+	uint8_t  is_vlan_to_del_add; /* whether to add or del vlan? */
 	uint8_t  num_mpls_val_sorted; /* num of elements in mpls_val_sorted */
 	uint32_t mpls_val_sorted[IPA_EoGRE_MAX_VLAN * IPA_GRE_MAX_S_VLAN];
 	uint16_t  vlan_c[IPA_EoGRE_MAX_VLAN * IPA_GRE_MAX_S_VLAN];
 	uint16_t  vlan_s[IPA_EoGRE_MAX_VLAN * IPA_GRE_MAX_S_VLAN];
 } __packed;
+
+
+#define MAX_VLAN_CONFIGURE 16
+enum pkt_path {
+	SW_PATH = 0,
+	HW_PATH_OUTSIDE_TUNNEL = 1,
+	HW_PATH_INSIDE_TUNNEL = 2
+};
+
+/* VLANID - Action - Tunnel_ID - MUX_ID */
+struct singletag_mux_map_entry {
+	uint16_t vlan_id;
+	uint8_t mux_id;
+	uint8_t pkt_path;
+	uint32_t tunnel_id;
+};
+
+struct ipa_ioc_mux_mapping_table {
+	struct singletag_mux_map_entry map_entries[MAX_VLAN_CONFIGURE];
+};
+
+/* Feature Type Supported Design*/
+/* Cache all Design Support with Regular HPS for both EoGRE and MPLSoGRE tunnel */
+#define DEFAULT_FEATURE 0x00
+/* EoGRE to support Single Tag packet with new HPS */
+#define SINGLE_TAG_FEATURE 0x01
+/* MPLSoGRE to support Double Tag packet with new HPS */
+#define DOUBLE_TAG_FEATURE 0x02
+/* EoGRE to support UnTag packet with new HPS */
+#define UNTAG_FEATURE 0x03
+
+/* l2 header is adjusted for every hwp_pkt_next_action */
+/* uc evaluate l2 header length and send packet to exception */
+#define SW_PATH_ADJ_L2_EXCEPTION 0x00
+/* uc evaluate l2 header length and send packet to 2nd pass */
+#define HW_PATH_ADJ_L2_RESUME_2ND_PASS 0x01
+/* uc evaluate l2 header length, update the metadata and send packet to 2nd pass */
+#define HW_PATH_ADJ_L2_METADATA_UPDATE_RESUME_2ND_PASS 0x02
+/* uc evaluate l2 header length, add outer header and send packet to 2nd pass */
+#define HW_PATH_ADJ_L2_ADD_TUNNEL_RESUME_2ND_PASS 0x03
+/* uc evaluate l2 header, update metadata, add outer header and send packet to 2nd pass */
+#define HW_PATH_ADJ_L2_ADD_TUNNEL_WITH_METADATA_UPDATE_RESUME_2ND_PASS 0x04
+
+/* untagged packet configuration */
+struct untag_pkt_config_t {
+	/* packet action that should follow untag packet */
+	uint32_t action_configured;
+	/* pdn from which untag packet should transfer */
+	uint8_t mux_id;
+	/* flag if 1=>pkt_with_option_hdr 0=>pkt_without_option_hdr */
+	uint8_t is_v6_options_hdr_present;
+	uint16_t pad0; /*for alignment*/
+	/* lower 32 bit of tunnel header address */
+	uint32_t *tunnel_template_addr;
+	uint32_t pad1; /*for alignment*/
+} __packed;
+
+
+/* vlanid - action - tunnel_id - mux_id */
+struct singletag_mux_mapping_table_t {
+	/* multi tunnel purpose */
+	uint16_t vlan_id_start;
+	uint16_t vlan_id_end;
+	uint32_t action_configured;
+	/* pdn from which untag packet should transfer */
+	uint8_t mux_id;
+	/* flag if 1=>pkt_with_option_hdr 0=>pkt_without_option_hdr */
+	uint8_t is_v6_options_hdr_present;
+	uint16_t tunnel_id;/* tunnel_id */
+	uint32_t *tunnel_template_addr;
+} __packed;
+
+struct doubletag_mux_mapping_table_t {
+	/* multi tunnel purpose */
+	uint16_t stag_id_start;
+	uint16_t stag_id_end;
+	uint16_t ctag_id_start;
+	uint16_t ctag_id_end;
+	uint32_t action_configured;
+	/* pdn from which untag packet should transfer */
+	uint8_t mux_id;
+	/* flag if 1=>pkt_with_option_hdr 0=>pkt_without_option_hdr */
+	uint8_t is_v6_options_hdr_present;
+	uint16_t pad0; /*for alignment*/
+	uint32_t *tunnel_template_addr;
+	uint32_t pad1; /*for alignment*/
+} __packed;
+
+/* max template side pass to uc */
+#define MAX_TEMPLATE_SIZE 64
+/* max number of tunnel to support ie: per PDN two tunnel (2*8)*/
+#define MAX_TUNNEL_SUPPORT 16
+
+/* @tunnel_protocols_config_table_t: Config tbl for uC
+ * @untagged_mapping_table : Store the untag tunnel info.
+ * @num_of_single_tag_configs : no of active tunnel in single tag config.
+ * @feature_mode: which tunnel feature is enabled.
+ * @tunnel_id: Which tunnel info receive from ipacm.
+ * @is_tunnel_id_to_del: whether tunnel to delete.
+ * @singletag_mux_mapping_table: Store tunnel info for active tunnels.
+ * @num_of_double_tag_configs: no of active tunnel in double tag config.
+ * @doubletag_mux_mapping_table: Store double tag tunnel info.
+ */
+struct tunnel_protocols_config_table_t {
+	struct untag_pkt_config_t untagged_mapping_table;
+	uint8_t num_of_single_tag_configs;
+	uint8_t feature_mode;
+	uint16_t tunnel_id;
+	uint32_t is_tunnel_id_to_del;
+	/* table for single tag pkt */
+	struct singletag_mux_mapping_table_t singletag_mux_mapping_table[MAX_TUNNEL_SUPPORT];
+	uint8_t num_of_double_tag_configs;
+	uint8_t pad3; /*for alignment*/
+	uint16_t pad4; /*for alignment*/
+	uint32_t pad5; /*for alignment*/
+	/* table for double tag pkt */
+	struct doubletag_mux_mapping_table_t doubletag_mux_mapping_table[MAX_TUNNEL_SUPPORT];
+};
+
+/* ioctl tunnel configuration table */
+
+struct ipa_ioc_tunnel_template_info {
+	uint8_t template_header[MAX_TEMPLATE_SIZE];
+	uint32_t template_len;
+	uint32_t template_type;
+	/*tunnel configuration table*/
+	struct tunnel_protocols_config_table_t tunnel_config;
+};
 
 /**
  * struct ipa_exception
@@ -4076,6 +4250,19 @@ struct ipa_ioc_dscp_pcp_map_info {
 #define IPA_IOC_ADD_DEL_DSCP_PCP_MAPPING _IOWR(IPA_IOC_MAGIC, \
 				IPA_IOCTL_ADD_DEL_DSCP_PCP_MAPPING, \
 				struct ipa_ioc_dscp_pcp_map_info)
+
+#define IPA_IOC_SEND_VLAN_MUXID_MAPPING _IOWR(IPA_IOC_MAGIC, \
+				IPA_IOCTL_SEND_VLAN_MUXID_MAPPING, \
+				struct ipa_ioc_mux_mapping_table)
+
+#define IPA_IOC_SEND_TUNNEL_TEMPLATE_INFO _IOW(IPA_IOC_MAGIC, \
+				IPA_IOCTL_SEND_TUNNEL_TEMPLATE_INFO, \
+				struct ipa_ioc_tunnel_template_info)
+
+
+#define IPA_IOC_QUERY_TUNNEL_FEATURE _IOW(IPA_IOC_MAGIC, \
+				IPA_IOCTL_QUERY_TUNNEL_FEATURE, \
+				uint8_t)
 
 /*
  * unique magic number of the Tethering bridge ioctls
