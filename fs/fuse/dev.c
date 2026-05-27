@@ -22,6 +22,7 @@
 #include <linux/swap.h>
 #include <linux/splice.h>
 #include <linux/sched.h>
+#include <linux/sched/mm.h>
 
 MODULE_ALIAS_MISCDEV(FUSE_MINOR);
 MODULE_ALIAS("devname:fuse");
@@ -1233,11 +1234,9 @@ static ssize_t fuse_dev_do_read(struct fuse_dev *fud, struct file *file,
 			   fc->max_write))
 		return -EINVAL;
 
-	if ((current->flags & PF_NOFREEZE) == 0) {
-		current->flags |= PF_NOFREEZE;
-		printk_ratelimited(KERN_WARNING "%s(%d): This thread should not be frozen\n",
-				current->comm, task_pid_nr(current));
-	}
+ 	/* @fs.sec -- 51ab84ba5e7a5c06d72ac60a9679ac69 -- */
+	if (!(current->flags & PF_MEMALLOC_NOFS))
+		memalloc_nofs_save();
 
  restart:
 	for (;;) {
@@ -1637,9 +1636,11 @@ static int fuse_notify_store(struct fuse_conn *fc, unsigned int size,
 
 		this_num = min_t(unsigned, num, PAGE_SIZE - offset);
 		err = fuse_copy_page(cs, &page, offset, this_num, 0);
-		if (!err && offset == 0 &&
-		    (this_num == PAGE_SIZE || file_size == end))
+		if (!PageUptodate(page) && !err && offset == 0 &&
+		    (this_num == PAGE_SIZE || file_size == end)) {
+			zero_user_segment(page, this_num, PAGE_SIZE);
 			SetPageUptodate(page);
+		}
 		unlock_page(page);
 		put_page(page);
 
