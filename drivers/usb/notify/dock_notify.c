@@ -23,10 +23,16 @@
 
 #define SMARTDOCK_INDEX	1
 #define MMDOCK_INDEX	2
+#define ROOTHUB_MAX_INDEX 10
 
 struct dev_table {
 	struct usb_device_id dev;
 	int index;
+};
+
+struct roothub_vid_pid {
+	u16 vid;
+	u16 pid;
 };
 
 static struct dev_table enable_notify_hub_table[] = {
@@ -73,6 +79,47 @@ static struct dev_table unsupport_device_table[] = {
 	}, /* The device for usb certification */
 	{}
 };
+
+#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
+static struct roothub_vid_pid root_hub_reserved[ROOTHUB_MAX_INDEX];
+
+static void save_roothub_vid_pid(struct usb_device *dev)
+{
+	u16 vid = le16_to_cpu(dev->descriptor.idVendor);
+	u16 pid = le16_to_cpu(dev->descriptor.idProduct);
+	int i;
+
+	for (i = 0; i < ROOTHUB_MAX_INDEX; i++) {
+		if (root_hub_reserved[i].vid == vid && root_hub_reserved[i].pid == pid)
+			break;
+		if (root_hub_reserved[i].vid == 0 && root_hub_reserved[i].pid == 0) {
+			root_hub_reserved[i].vid = vid;
+			root_hub_reserved[i].pid = pid;
+			break;
+		}
+	}
+}
+
+static bool match_roothub_vid_pid(struct usb_device *dev)
+{
+	u16 vid = le16_to_cpu(dev->descriptor.idVendor);
+	u16 pid = le16_to_cpu(dev->descriptor.idProduct);
+	bool ret = false;
+	int i;
+
+	for (i = 0; i < ROOTHUB_MAX_INDEX; i++) {
+		if (root_hub_reserved[i].vid == 0 && root_hub_reserved[i].pid == 0)
+			break;
+
+		if (root_hub_reserved[i].vid == vid && root_hub_reserved[i].pid == pid) {
+			ret = true;
+			break;
+		}
+	}
+
+	return ret;
+}
+#endif
 
 static int check_essential_device(struct usb_device *dev, int index)
 {
@@ -245,9 +292,84 @@ done:
 	return;
 }
 
+static void disconnect_usb_driver(struct usb_device *dev)
+{
+	struct usb_interface *intf = NULL;
+	struct usb_driver *driver = NULL;
+	int i;
+
+	if (!dev) {
+		pr_err("%s no dev\n", __func__);
+		goto done;
+	}
+
+	if (!dev->actconfig) {
+		pr_err("%s no set config\n", __func__);
+		goto done;
+	}
+
+	for (i = 0; i < dev->actconfig->desc.bNumInterfaces; i++) {
+		intf = dev->actconfig->interface[i];
+		if (intf->dev.driver) {
+			driver = to_usb_driver(intf->dev.driver);
+			usb_driver_release_interface(driver, intf);
+		}
+	}
+done:
+	return;
+}
+
+#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
+static void connect_usb_driver(struct usb_device *dev)
+{
+	struct usb_interface *intf = NULL;
+	int i, ret = 0;
+
+	if (!dev) {
+		pr_err("%s no dev\n", __func__);
+		goto done;
+	}
+
+	if (!dev->actconfig) {
+		pr_err("%s no set config\n", __func__);
+		goto done;
+	}
+
+	for (i = 0; i < dev->actconfig->desc.bNumInterfaces; i++) {
+		intf = dev->actconfig->interface[i];
+		intf->authorized = 1;
+	}
+
+	for (i = 0; i < dev->actconfig->desc.bNumInterfaces; i++) {
+		intf = dev->actconfig->interface[i];
+		if (!intf->dev.driver) {
+			ret = device_attach(&intf->dev);
+			if (ret < 0)
+				pr_err("%s attach intf->dev. error ret(%d)\n", __func__, ret);
+			else
+				pr_info("%s attach intf->dev\n", __func__);
+		}
+	}
+done:
+	return;
+}
+
+static void intf_authorized_clear(struct usb_device *dev)
+{
+	struct usb_hcd *hcd = bus_to_hcd(dev->bus);
+
+	pr_info("%s\n", __func__);
+	if (hcd)
+		clear_bit(HCD_FLAG_INTF_AUTHORIZED, &hcd->flags);
+}
+#endif
+
 static int call_device_notify(struct usb_device *dev, int connect)
 {
 	struct otg_notify *o_notify = get_otg_notify();
+#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
+	int ret = 0;
+#endif
 
 	if (dev->bus->root_hub != dev) {
 		if (connect) {
@@ -271,19 +393,48 @@ static int call_device_notify(struct usb_device *dev, int connect)
 
 			if (!usb_check_whitelist_for_mdm(dev)) {
 				pr_info("This deice will be noattached state.\n");
-				usb_set_configuration(dev, -1);
+				disconnect_usb_driver(dev);
 				usb_set_device_state(dev, USB_STATE_NOTATTACHED);
 			}
+#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
+			ret = usb_check_allowlist_for_lockscreen_enabled_id(dev);
+			if (ret == USB_NOTIFY_NOLIST) {
+				pr_info("This device will be disabled.\n");
+				disconnect_usb_driver(dev);
+				usb_set_device_state(dev, USB_STATE_NOTATTACHED);
+				dev->authorized = 0;
+			} else if (ret == USB_NOTIFY_ALLOWLOST) {
+				if (!match_roothub_vid_pid(dev)) {
+					connect_usb_driver(dev);
+				} else {
+					pr_info("error. this device has same vid,pid with root hub.\n");
+					disconnect_usb_driver(dev);
+					usb_set_device_state(dev, USB_STATE_NOTATTACHED);
+				}
+			} else if (ret == USB_NOTIFY_NORESTRICT) {
+				connect_usb_driver(dev);
+			}
+#endif
 		} else {
 			send_otg_notify(o_notify,
 				NOTIFY_EVENT_DEVICE_CONNECT, 0);
 			store_usblog_notify(NOTIFY_PORT_DISCONNECT,
 				(void *)&dev->descriptor.idVendor,
 				(void *)&dev->descriptor.idProduct);
+#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
+			if (!dev->authorized)
+				disconnect_unauthorized_device(dev);
+#endif
 		}
 	} else {
-		if (connect)
+		if (connect) {
 			pr_info("%s root hub\n", __func__);
+#ifndef CONFIG_DISABLE_LOCKSCREEN_USB_RESTRICTION
+			if (check_usb_restrict_lock_state(o_notify))
+				intf_authorized_clear(dev);
+			save_roothub_vid_pid(dev);
+#endif
+		}
 	}
 
 	return 0;
@@ -371,6 +522,72 @@ static void check_device_speed(struct usb_device *dev, bool on)
 
 	pr_info("%s : o_notify->speed %s\n", __func__,
 		usb_speed_string(get_con_dev_max_speed(o_notify)));
+}
+
+static void check_roothub_device(struct usb_device *dev, bool on)
+{
+	struct otg_notify *o_notify = get_otg_notify();
+	struct usb_device *hdev;
+	struct usb_device *udev;
+	int port = 0;
+	int speed = USB_SPEED_UNKNOWN;
+	int pr_speed = USB_SPEED_UNKNOWN;
+	static int hs_hub;
+	static int ss_hub;
+	int con_hub = 0;
+
+	if (!o_notify) {
+		pr_err("%s otg_notify is null\n", __func__);
+		return;
+	}
+
+	pr_speed = get_con_dev_max_speed(o_notify);
+
+	hdev = dev->parent;
+	if (!hdev)
+		return;
+
+	hdev = dev->bus->root_hub;
+	if (!hdev)
+		return;
+
+	usb_hub_for_each_child(hdev, port, udev) {
+		if (!on && (udev == dev))
+			continue;
+		if (is_usbhub(udev))
+			con_hub = 1;
+
+		if (udev->speed > speed)
+			speed = udev->speed;
+	}
+
+	if (hdev->speed >= USB_SPEED_SUPER) {
+		if (speed > USB_SPEED_UNKNOWN)
+			ss_hub = 1;
+		else
+			ss_hub = 0;
+	} else if (hdev->speed > USB_SPEED_UNKNOWN
+			&& hdev->speed != USB_SPEED_WIRELESS) {
+		if (speed > USB_SPEED_UNKNOWN)
+			hs_hub = 1;
+		else
+			hs_hub = 0;
+	} else
+		;
+
+	if (ss_hub || hs_hub) {
+		if (speed > pr_speed)
+			set_con_dev_max_speed(o_notify, speed);
+	} else
+		set_con_dev_max_speed(o_notify, USB_SPEED_UNKNOWN);
+
+	pr_info("%s : dev->speed %s %s\n", __func__,
+		usb_speed_string(dev->speed), on ? "on" : "off");
+
+	pr_info("%s : o_notify->speed %s\n", __func__,
+		usb_speed_string(get_con_dev_max_speed(o_notify)));
+
+	set_con_dev_hub(o_notify, speed, con_hub);
 }
 
 #if defined(CONFIG_USB_HW_PARAM)
@@ -477,6 +694,7 @@ static int dev_notify(struct notifier_block *self,
 		call_battery_notify(dev, 1);
 		check_device_speed(dev, 1);
 		update_hub_autosuspend_timer(dev);
+		check_roothub_device(dev, 1);
 #if defined(CONFIG_USB_HW_PARAM)
 		set_hw_param(dev);
 #endif
@@ -488,6 +706,7 @@ static int dev_notify(struct notifier_block *self,
 		call_device_notify(dev, 0);
 		call_battery_notify(dev, 0);
 		check_device_speed(dev, 0);
+		check_roothub_device(dev, 0);
 		break;
 	}
 	return NOTIFY_OK;
