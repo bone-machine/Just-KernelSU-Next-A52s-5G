@@ -1,24 +1,29 @@
-# bone-machine's custom Android Kernel for the Samsung A52s 5G (Snapdragon 778G - SM7325)
+# bone-machine's Custom Android Kernel for the Samsung A52s 5G (Snapdragon 778G - SM7325)
 
-Based from **A528NKSU4GXE1** with backported changes from A73 5G (**A736BXXUAFYE6**)
+Based on **A528NKSU4GXE1** with backported changes from A73 5G (**A736BXXUAFYE6**), and additional cherry-picked backports and custom modifications
 
 Linux v5.4.289, built with Clang v19.0 (plus other compilation optimizations)
 
 ### Features
 
-- Implemented KSU-Next (**v3.2.0-legacy**) as root solution, using manual hooks
-- Supports both AOSP and One UI ROMs (works on Android 16, should work on other versions)
-- Added new GPU minimum frequency step, plus reducing voltage and idle timeout
+- Implemented KSU-Next (**v3.2.0-legacy**) as the root solution, using manual hooks
+- Supports both AOSP and One UI<sup>(*)</sup> ROMs (works on Android 16; should work on other versions)
+- Added a new GPU minimum frequency step, along with lower voltage and idle timeout values
 - Switched ZRAM compression algorithm to LZ4KD
 - Disabled several kernel debugging tools, flags, and features
 - Enabled CONFIG_TMPFS_XATTR for [mountify](https://github.com/backslashxx/mountify) KernelSU module mounting compatibility
 - Disabled Samsung Knox
 - Switchable SELinux policy
+- USB OTG<sup>(*)</sup>
 
-And other minor CPU and RAM tweaks, etc. (check commit log)
+Other minor CPU and RAM tweaks (see commit history)
+
+<sub>* Untested. Should work.</sub>
+
+**Disclaimer**: I am by no means a kernel developer; this is just a personal project. Consider this entire repository a curated collection of additions and modifications.
 
 # How to build
-[Check this tutorial for any concerns, or if you don't know where, or how, to start](https://github.com/ravindu644/Android-Kernel-Tutorials)
+[Check this tutorial if you have any questions, or if you don't know where, or how, to start](https://github.com/ravindu644/Android-Kernel-Tutorials)
 
 ### Clang
 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r530567.tar.gz
@@ -43,7 +48,7 @@ make -j$(nproc) \
   CONFIG_SECTION_MISMATCH_WARN_ONLY=y
 ```
 
-If asked, use these options
+If prompted during configuration, use the following options:
 
 `Enable vDSO for 32-bit applications (COMPAT_VDSO)` **y**
 
@@ -77,7 +82,7 @@ If asked, use these options
 
 [avbtool](https://android.googlesource.com/platform/external/avb/+/refs/heads/main/avbtool.py?format=TEXT)
 
-Extract `boot.img` and `vendor_boot.img` from ROM .zip file (or use the ones from `template-zip-file` folder, located at the kernel root directory)
+Extract `boot.img` and `vendor_boot.img` from ROM's .zip file (or use the ones from `template-zip-file` folder, located at the kernel root directory)
 
 Erase footer from both of them with `avbtool erase_footer --image {file-image}.img` (not necessary if using the ones from `template-zip-file` folder)
 
@@ -106,11 +111,11 @@ Open header file and replace first line with `SRPUE26A001` (probably not necessa
 
 `rm -rf lib/modules/5.4-gki/*`
 
-Place .ko files from `modules_for_zip/` and `modules.alias`, `modules.dep`, `modules.softdep` and `modules.load` in `lib/modules/`, make sure and `modules.dep` entry lines for each module points to `/lib/modules/` and not `/vendor/lib/modules/`
+Place .ko files from `modules_for_zip/` and `modules.alias`, `modules.dep`, `modules.softdep` and `modules.load` in `lib/modules/`. Make sure the `modules.dep` entries for each module point to `/lib/modules/` and not `/vendor/lib/modules/`
 
 **Note**: You can find `modules.*` files (`modules.alias`, etc.) in the `template-zip-file` folder at the kernel root directory, along with .ko module files, built for the `ksu-next-aosp` branch (though you shouldn't need them if your build was successful, see `modules_for_zip/` steps).
 
-Also, if using `vendor_boot.img` from `template-zip-file` folder it already has the proper `modules.*` files (assuming you did not add or remove any modules)
+Also, if using `vendor_boot.img` from `template-zip-file` folder, it already has the proper `modules.*` files (assuming you did not add or remove any modules)
 
 `cp -rf {kernel-source-directory}/firmware/tsp_stm/fts5cu56a_a52sxq* lib/firmware/tsp_stm/` (not necessary if using `vendor_boot.img` from `template-zip-file` folder, since it is already present)
 
@@ -154,17 +159,19 @@ git commit -m "Update KernelSU-Next to v3.2.0-legacy"
 ```
 
 ## KSU-Next and other notes
+I have yet to find any app that complains about root while using [crDroid ROM](https://crdroid.net/a52sxq/12) for this device with KSU-Next manual hook implementation and Zygisk-Next.\
+I have no need to implement SUSFS (you can check [MySelly](https://github.com/crdroidandroid/android_kernel_nothing_sm7325)'s repo if you need to implement it and how to do so)
 
 Use [mountify](https://github.com/backslashxx/mountify) as the primary metamodule
 
-Update GPU drivers with this [KSU module](https://t.me/adrenolabsupport/242/3985)
+Update GPU drivers with this [KSU module](https://t.me/adrenolabsupport/242/1157). Newer versions of this module aren't compatible with this device. One notable issue is that you won't be able to upload stories on Instagram or send any media through DMs if you do update it. Stick with this one. You also need `mountify` for it to work
 
 Use [Zygisk-Next](https://github.com/Dr-TSNG/ZygiskNext), and this version of [LSPosed](https://t.me/LSPosed/314) if needed (check for newer versions on that Telegram group)
 
 For ad-blocking, just use [bindhosts](https://github.com/bindhosts/bindhosts)
 
 # Credits (*)
-**salvogiangri** (kernel, UN1CA ROM), **utkustnr/Frax3r** (kernel, update-binary shell script and README.md instructions), **RisenID** (kernel), **saadelasfur** (kernel), **Simon1511** (AOSP related changes), **MySelly** (crDroid's Nothing-Phone-1 kernel), **Haky86** (kernel A23 5G), **DrRoot85** (kernel S23), **rifsxd** (KSU-Next), **backslashxx** (Manual hook implementation for KSU-Next), **osm0sis** (Recovery Flashable Zip shell script), **ravindu644** (kernel compilation), **Samsung** (original kernel source code)
+**salvogiangri** (kernel, UN1CA ROM), **utkustnr/Frax3r** (kernel, update-binary shell script and README.md instructions), **RisenID** (kernel), **saadelasfur** (kernel), **Simon1511** (AOSP related changes), **MySelly** (crDroid's Nothing-Phone-1 kernel), **Haky86** (kernel A23 5G), **DrRoot85** (kernel S23), **0xSecureByte** (kernel msm-5.4), **rifsxd** (KSU-Next), **backslashxx** (Manual hook implementation for KSU-Next), **osm0sis** (Recovery Flashable Zip shell script), **ravindu644** (kernel compilation), **Samsung** (original kernel source code), **CodeLinaro** (kernel Qualcomm msm-5.4)
 
 <sub>* There are several commits which do not have the original author's name. In most cases, you can find the source for each change inside each commit. In any case, I do not take credit for them.</sub>
 
@@ -183,14 +190,18 @@ https://github.com/LineageOS/android_kernel_samsung_sm7325
 
 https://github.com/crdroidandroid/android_kernel_nothing_sm7325/
 
-https://github.com/KernelSU-Next/KernelSU-Next
-
 https://github.com/Haky86/android_kernel_samsung_sm6375
 
 https://github.com/DrRoot85/kernel_samsung_sm8550-commom
+
+https://github.com/0xSecureByte/platform_kernel_msm-5.4
+
+https://github.com/KernelSU-Next/KernelSU-Next
 
 https://github.com/backslashxx/KernelSU/issues/5#event-24583207399
 
 https://github.com/ravindu644/Android-Kernel-Tutorials
 
 https://opensource.samsung.com/uploadList?menuItem=mobile (SM-A736B, SM-A528B, SM-A528N)
+
+https://git.codelinaro.org/clo/la/kernel/msm-5.4
