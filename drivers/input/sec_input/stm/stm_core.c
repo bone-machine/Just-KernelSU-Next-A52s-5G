@@ -1788,7 +1788,6 @@ static void stm_ts_coordinate_event(struct stm_ts_data *ts, u8 *event_buff)
 
 static void stm_ts_status_event(struct stm_ts_data *ts, u8 *event_buff)
 {
-
 	struct stm_ts_event_status *p_event_status;
 
 	p_event_status = (struct stm_ts_event_status *)event_buff;
