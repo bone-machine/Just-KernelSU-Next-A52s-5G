@@ -9,7 +9,7 @@ Linux 5.4.289, built with Clang v19.0 (plus other compilation optimizations)
 ### Features
 
 - Implemented KSU-Next (**v3.2.0-legacy**) as the root solution, using manual hooks
-- Supports both AOSP and One UI<sup>(*)</sup> ROMs (works on Android 16; should work on other versions)
+- Supports both AOSP and One UI ROMs (works on Android 16; should work on other versions)
 - Added a new GPU minimum frequency step, along with lower voltage and idle timeout values
 - Disabled several kernel debugging tools, flags, and features
 - Enabled CONFIG_TMPFS_XATTR for [mountify](https://github.com/backslashxx/mountify) KernelSU module mounting compatibility
@@ -30,8 +30,10 @@ Other minor CPU and RAM tweaks (see commit history)
    - `*_One-UI_*.zip` for Samsung One UI ROMs
 2. Reboot into your recovery environment
 3. Flash the .zip file
+    - If this is your first time flashing the kernel, make sure to wipe Cache/Dalvik. Otherwise, you can skip this step
 4. Reboot
 5. Download the KernelSU-Next manager app [here](https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v3.2.0/KernelSU_Next_v3.2.0_33129-release.apk) and install it
+    - If you are upgrading from a much older version of KernelSU-Next, completely uninstall your current manager app before installing this one.
 
 # Notes
 Use [mountify](https://github.com/backslashxx/mountify) as the primary metamodule
@@ -52,7 +54,7 @@ Run `build_kernel_zip.sh` for a fully automated kernel build.
 
 The script downloads and extracts required build tools (`clang` and `magiskboot`) into the local `toolchain/` directory. No system-wide installation is performed.
 
-You may edit hard-coded values in the script (such as AUTHOR, DEVICE, or build metadata) to match your setup.
+You may edit hard-coded values in the script (such as AUTHOR or build metadata) to match your setup.
 
 **Notes**:
 
@@ -233,6 +235,8 @@ git commit -m "Update KernelSU-Next to v3.2.0-legacy"
 
 # Credits (*)
 **salvogiangri** (kernel, UN1CA ROM), **Simon1511** (AOSP related changes), **Frax3r/utkustnr** (kernel, update-binary shell script and README.md instructions), **RisenID** (kernel), **saadelasfur** (kernel),  **MySelly** (crDroid's Nothing-Phone-1 kernel), **Haky86** (kernel A23 5G), **DrRoot85** (kernel S23), **0xSecureByte** (kernel msm-5.4), **rifsxd** (KSU-Next), **backslashxx** (Manual hook implementation for KSU-Next), **osm0sis** (Recovery Flashable Zip shell script), **ravindu644** (kernel compilation), **Samsung** (original kernel source code), **CodeLinaro** (kernel Qualcomm msm-5.4)
+
+**Testers**: **Ghostess**, **VirtuaLYT** (One UI kernel release)
 
 <sup>* There are several commits which do not have the original author's name. In most cases, you can find the source for each change inside each commit. In any case, I do not take credit for them.</sup>
 
