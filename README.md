@@ -9,17 +9,18 @@ Linux 5.4.289, built with Clang v19.0 (plus other compilation optimizations)
 ### Features
 
 - Implemented KSU-Next (**v3.2.0-legacy**) as the root solution, using manual hooks
-- Supports both AOSP and One UI ROMs (works on Android 16; should work on other versions)
+- Supports both AOSP and One UI ROMs (works on Android 16; should work on other versions<sup>*</sup>)
 - Added a new GPU minimum frequency step, along with lower voltage and idle timeout values
 - Disabled several kernel debugging tools, flags, and features
 - Enabled CONFIG_TMPFS_XATTR for [mountify](https://github.com/backslashxx/mountify) KernelSU module mounting compatibility
 - Disabled Samsung Knox
 - Switchable SELinux policy
-- USB OTG<sup>(*)</sup>
+- USB OTG<sup>**</sup>
 
 Other minor CPU and RAM tweaks (see commit history)
 
-<sup>* Untested. Should work.</sup>
+<sup>* Does not work in One UI 6.</sup>\
+<sup>** Untested. Should work.</sup>
 
 **Disclaimer**: I am by no means a kernel developer; this is just a personal project. Consider this entire repository a curated collection of additions and modifications.
 
@@ -33,7 +34,7 @@ Other minor CPU and RAM tweaks (see commit history)
     - If this is your first time flashing the kernel, make sure to wipe Cache/Dalvik. Otherwise, you can skip this step
 4. Reboot
 5. Download the KernelSU-Next manager app [here](https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v3.2.0/KernelSU_Next_v3.2.0_33129-release.apk) and install it
-    - If you are upgrading from a much older version of KernelSU-Next, completely uninstall your current manager app before installing this one.
+    - If the KernelSU-Next Manager app reports "Unsupported", completely uninstall and reinstall it
 
 # Notes
 Use [mountify](https://github.com/backslashxx/mountify) as the primary metamodule
