@@ -15,12 +15,10 @@ Linux 5.4.289, built with Clang v19.0 (plus other compilation optimizations)
 - Enabled CONFIG_TMPFS_XATTR for [mountify](https://github.com/backslashxx/mountify) KernelSU module mounting compatibility
 - Disabled Samsung Knox
 - Switchable SELinux policy
-- USB OTG<sup>**</sup>
 
 Other minor CPU and RAM tweaks (see commit history)
 
-<sup>* Does not work in One UI 6.</sup>\
-<sup>** Untested. Should work.</sup>
+<sup>* Does not work in One UI 6.</sup>
 
 **Disclaimer**: I am by no means a kernel developer; this is just a personal project. Consider this entire repository a curated collection of additions and modifications.
 
@@ -237,7 +235,7 @@ git commit -m "Update KernelSU-Next to v3.2.0-legacy"
 # Credits (*)
 **salvogiangri** (kernel, UN1CA ROM), **Simon1511** (AOSP related changes), **Frax3r/utkustnr** (kernel, update-binary shell script and README.md instructions), **RisenID** (kernel), **saadelasfur** (kernel),  **MySelly** (crDroid's Nothing-Phone-1 kernel), **Haky86** (kernel A23 5G), **DrRoot85** (kernel S23), **0xSecureByte** (kernel msm-5.4), **rifsxd** (KSU-Next), **backslashxx** (Manual hook implementation for KSU-Next), **osm0sis** (Recovery Flashable Zip shell script), **ravindu644** (kernel compilation), **Samsung** (original kernel source code), **CodeLinaro** (kernel Qualcomm msm-5.4)
 
-**Testers**: **Ghostess**, **VirtuaLYT** (One UI kernel release)
+**Testers**: **Ghostess**, **VirtuaLYT** (One UI kernel release), **Selbstschuss** (USB OTG)
 
 <sup>* There are several commits which do not have the original author's name. In most cases, you can find the source for each change inside each commit. In any case, I do not take credit for them.</sup>
 
