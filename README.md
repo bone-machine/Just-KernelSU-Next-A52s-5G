@@ -9,7 +9,8 @@ Linux 5.4.289, built with Clang v19.0 (plus other compilation optimizations)
 ### Features
 
 - Implemented KSU-Next (**v3.2.0-legacy**) as the root solution, using manual hooks
-- Supports both AOSP and One UI ROMs (works on Android 16; should work on other versions<sup>*</sup>)
+- Supports both AOSP and One UI 8 ROMs (works on Android 16; should work on other versions<sup>*</sup>)
+- Optimized for battery life and performance
 - Added a new GPU minimum frequency step, along with lower voltage and idle timeout values
 - Disabled several kernel debugging tools, flags, and features
 - Enabled CONFIG_TMPFS_XATTR for [mountify](https://github.com/backslashxx/mountify) KernelSU module mounting compatibility
@@ -27,14 +28,16 @@ Other minor CPU and RAM tweaks (see commit history)
 1. Download the appropriate flashable .zip file from the [Releases](https://github.com/bone-machine/android_kernel_samsung_sm7325_a52s_5g/releases) page:
    - `*_AOSP_*.zip` for AOSP-based ROMs
    - `*_One-UI_*.zip` for Samsung One UI ROMs
-2. Reboot into your recovery environment
+2. Reboot into your recovery environment (see [TWRP](https://xdaforums.com/t/recovery-official-twrp-3-7-1-0-for-galaxy-a52s-5g.4488419/))
 3. Flash the .zip file
     - If this is your first time flashing the kernel, make sure to wipe Cache/Dalvik. Otherwise, you can skip this step
 4. Reboot
 5. Download the KernelSU-Next manager app [here](https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v3.2.0/KernelSU_Next_v3.2.0_33129-release.apk) and install it
-    - If the KernelSU-Next Manager app reports "Unsupported", completely uninstall and reinstall it
+    - If the KernelSU-Next Manager app reports "Unsupported", completely uninstall and reinstall it. Your existing modules will be preserved
 
 # Notes
+The following are optional recommendations; feel free to use any, all, or none of them.
+
 Use [mountify](https://github.com/backslashxx/mountify) as the primary metamodule
 
 Update GPU drivers with this [KSU module](https://t.me/adrenolabsupport/242/1157). Newer versions of this module aren't compatible with this device. One notable issue is that you won't be able to upload stories on Instagram or send any media through DMs if you do update it. Stick with this one. You also need `mountify` for it to work
@@ -51,7 +54,7 @@ I have no need to implement SUSFS (you can check [MySelly](https://github.com/cr
 # How to build
 Run `build_kernel_zip.sh` for a fully automated kernel build.
 
-The script downloads and extracts required build tools (`clang` and `magiskboot`) into the local `toolchain/` directory. No system-wide installation is performed.
+The script downloads and extracts required build tools (`clang`, `magiskboot` and `avbtool`) into the local `toolchain/` directory. No system-wide installation is performed.
 
 You may edit hard-coded values in the script (such as AUTHOR or build metadata) to match your setup.
 
@@ -61,7 +64,7 @@ You may edit hard-coded values in the script (such as AUTHOR or build metadata) 
 
 - It's still not fully automated; if prompted during kernel configuration, use the options stated in the "Manually" section below.
 
-- The build script relies on pre-packaged images located in `toolchain/magiskboot/boot/` and `toolchain/magiskboot/vendor_boot/`. It does not automatically remove AVB footers using `avbtool` as the provided images are already prepared without them. If you provide your own `boot.img` or `vendor_boot.img`, you must erase the footer manually before running the script. See the "Manually" section below for details.
+- The build script relies on pre-packaged images located in `toolchain/baseimages` for both AOSP (crDroid) and One UI (UN1CA 3.1.0). If you provide your own `boot.img` or `vendor_boot.img`, make sure you replace both `boot.img` and `vendor_boot.img` in either `aosp` or `oneui` folder, depending on which ROM you got them from.
 
 ## Dependencies
 
@@ -235,7 +238,7 @@ git commit -m "Update KernelSU-Next to v3.2.0-legacy"
 # Credits (*)
 **salvogiangri** (kernel, UN1CA ROM), **Simon1511** (AOSP related changes), **Frax3r/utkustnr** (kernel, update-binary shell script and README.md instructions), **RisenID** (kernel), **saadelasfur** (kernel),  **MySelly** (crDroid's Nothing-Phone-1 kernel), **Haky86** (kernel A23 5G), **DrRoot85** (kernel S23), **0xSecureByte** (kernel msm-5.4), **rifsxd** (KSU-Next), **backslashxx** (Manual hook implementation for KSU-Next), **osm0sis** (Recovery Flashable Zip shell script), **ravindu644** (kernel compilation), **Samsung** (original kernel source code), **CodeLinaro** (kernel Qualcomm msm-5.4)
 
-**Testers**: **Ghostess**, **VirtuaLYT** (One UI kernel release), **Selbstschuss** (USB OTG)
+**Testers**: **Ghostess**, **lolyou2137** (One UI kernel release), **Selbstschuss** (USB OTG)
 
 <sup>* There are several commits which do not have the original author's name. In most cases, you can find the source for each change inside each commit. In any case, I do not take credit for them.</sup>
 
