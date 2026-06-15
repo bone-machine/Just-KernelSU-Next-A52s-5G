@@ -19,12 +19,14 @@ die()     { echo -e "${RED}${BOLD}[ERR]${NC}   $*" >&2; exit 1; }
 # ─── Trap: clean up temp dirs on unexpected exit ──────────────────────────────
 TMP_CLANG=""
 TMP_MAGISK=""
+TMP_AVBTOOL=""
 TMP_ZIP_STAGING=""
 TMP_BOOT=""
 TMP_VENDOR_BOOT=""
 cleanup_tmp() {
     [[ -n "$TMP_CLANG"        && -d "$TMP_CLANG"        ]] && rm -rf "$TMP_CLANG"
     [[ -n "$TMP_MAGISK"       && -d "$TMP_MAGISK"       ]] && rm -rf "$TMP_MAGISK"
+    [[ -n "$TMP_AVBTOOL"      && -f "$TMP_AVBTOOL"      ]] && rm -f "$TMP_AVBTOOL"
     [[ -n "$TMP_ZIP_STAGING"  && -d "$TMP_ZIP_STAGING"  ]] && rm -rf "$TMP_ZIP_STAGING"
     [[ -n "$TMP_BOOT"         && -d "$TMP_BOOT"         ]] && rm -rf "$TMP_BOOT"
     [[ -n "$TMP_VENDOR_BOOT"  && -d "$TMP_VENDOR_BOOT"  ]] && rm -rf "$TMP_VENDOR_BOOT"
@@ -150,7 +152,6 @@ check_file "${SOURCE_IMAGES_DIR}/vendor_boot.img" "Source vendor_boot.img (${ROM
 
 # Flashable zip template
 check_file "${UPDATE_BINARY_TEMPLATE}"            "update-binary template"
-check_dir  "${TEMPLATE_IMAGES_DIR}"               "Flashable zip images dir"
 check_dir  "${TEMPLATE_ZIP_DIR}/META-INF"         "Flashable zip META-INF dir"
 
 # Firmware
@@ -244,21 +245,24 @@ else
 fi
 
 # ─── Step 4: avbtool ─────────────────────────────────────────────────────────
-info "Downloading avbtool..."
-
-TMP_AVBTOOL="$(mktemp)"
-
-curl -L --progress-meter "$AVBTOOL_URL" \
-    | base64 -d > "$TMP_AVBTOOL" \
-    || die "Failed to download avbtool"
-
-python3 -c "import ast; ast.parse(open('${TMP_AVBTOOL}').read())" \
-    || die "avbtool download appears corrupted — not valid Python"
-
-chmod +x "$TMP_AVBTOOL"
-mv "$TMP_AVBTOOL" "$AVBTOOL_BIN"
-
-success "avbtool installed to ${AVBTOOL_BIN}"
+if [[ -x "$AVBTOOL_BIN" ]]; then
+    success "avbtool already present at ${AVBTOOL_BIN}, skipping"
+else
+    info "Downloading avbtool..."
+    TMP_AVBTOOL="$(mktemp)"
+    # The URL returns base64-encoded content — decode it to get the Python script
+    curl -L --progress-meter "$AVBTOOL_URL" \
+        | base64 -d > "$TMP_AVBTOOL" \
+        || die "Failed to download avbtool"
+    # Verify it's actually avbtool and not a corrupted download or HTML error page
+    python3 -c "import ast; ast.parse(open('${TMP_AVBTOOL}').read())" \
+        || die "avbtool download is not valid Python — possibly corrupted"
+    grep -q "def erase_footer" "$TMP_AVBTOOL" \
+        || die "avbtool download does not contain erase_footer — wrong file downloaded"
+    chmod +x "$TMP_AVBTOOL"
+    mv "$TMP_AVBTOOL" "$AVBTOOL_BIN"
+    success "avbtool installed to ${AVBTOOL_BIN}"
+fi
 
 # ─── Step 5: Export PATH ──────────────────────────────────────────────────────
 export PATH="${CLANG_DIR}/bin:${TOOLCHAIN_DIR}:$PATH"
@@ -378,6 +382,9 @@ find "${MODULES_VERSIONED_DIR}" -name "*.ko" \
     || die "Failed to flatten modules"
 
 # Run depmod using System.map for correct symbol resolution
+# depmod warnings about modules.order, modules.builtin, modules.builtin.modinfo
+# are harmless — those files don't exist for external modules and don't affect
+# the generated modules.dep or modules.alias
 SYSTEM_MAP="${OUT_DIR}/System.map"
 [[ -f "$SYSTEM_MAP" ]] || die "System.map not found at ${SYSTEM_MAP}"
 depmod \
@@ -407,8 +414,17 @@ success "Modules installed, stripped, and metadata generated: ${MODULE_COUNT} fi
 KERNEL_IMAGE="${OUT_DIR}/arch/arm64/boot/Image"
 [[ -f "$KERNEL_IMAGE" ]] || die "Kernel Image missing after build — check build logs"
 
-# ─── Step 11: Wipe template images dir — repopulated below ───────────────────
-find "${TEMPLATE_IMAGES_DIR}" -mindepth 1 -delete
+# ─── Step 11: Create temp zip staging dir and ensure images dir exists ────────
+# template-zip-file/images/ is intentionally kept empty in git (no .gitkeep needed)
+# The script creates it here if absent, populates it via the temp staging dir
+mkdir -p "${TEMPLATE_IMAGES_DIR}"
+
+info "Creating flashable zip: ${ZIP_NAME}..."
+[[ ! -f "${KERNEL_ROOT}/${ZIP_NAME}" ]] || warn "Overwriting existing zip: ${ZIP_NAME}"
+
+TMP_ZIP_STAGING="$(mktemp -d)"
+mkdir -p "${TMP_ZIP_STAGING}/images"
+cp -r "${TEMPLATE_ZIP_DIR}/META-INF" "${TMP_ZIP_STAGING}/META-INF"
 
 # ─── Step 12: boot.img ───────────────────────────────────────────────────────
 info "Repacking boot.img..."
@@ -419,17 +435,17 @@ magiskboot unpack boot.img || die "magiskboot unpack boot.img failed"
 cp "$KERNEL_IMAGE" kernel
 
 magiskboot repack boot.img || die "magiskboot repack boot.img failed"
-cp new-boot.img "${TEMPLATE_IMAGES_DIR}/boot.img" || die "new-boot.img not found after repack"
+cp new-boot.img "${TMP_ZIP_STAGING}/images/boot.img" || die "new-boot.img not found after repack"
 rm -f kernel ramdisk.cpio new-boot.img
 cd "${KERNEL_ROOT}"
-success "boot.img repacked and placed in ${TEMPLATE_IMAGES_DIR}/"
+success "boot.img repacked"
 
 # ─── Step 13: dtbo.img ───────────────────────────────────────────────────────
 info "Copying dtbo.img..."
 DTBO_SRC="${OUT_DIR}/arch/arm64/boot/dtbo.img"
 [[ -f "$DTBO_SRC" ]] || die "dtbo.img not found at ${DTBO_SRC}"
-cp "$DTBO_SRC" "${TEMPLATE_IMAGES_DIR}/dtbo.img"
-success "dtbo.img placed in ${TEMPLATE_IMAGES_DIR}/"
+cp "$DTBO_SRC" "${TMP_ZIP_STAGING}/images/dtbo.img"
+success "dtbo.img placed in staging dir"
 
 # ─── Step 14: vendor_boot.img ────────────────────────────────────────────────
 info "Repacking vendor_boot.img..."
@@ -469,14 +485,13 @@ rm -f lib/modules/modules.alias \
       lib/modules/modules.load \
       lib/modules/modules.softdep
 
-# Wipe *-gki dir contents, preserving the directories themselves
+# Wipe *-gki dir contents if present, preserving the directories themselves
 find lib/modules -maxdepth 1 -type d -name '*-gki' -print0 |
     while IFS= read -r -d '' gki_dir; do
         find "${gki_dir:?}" -mindepth 1 -delete
     done
 
 # Copy fresh .ko files from canonical kernel install output
-mkdir -p lib/modules
 find "${MODULES_VERSIONED_DIR}" -name "*.ko" -exec cp -t lib/modules/ {} + \
     || die "Failed to copy .ko files into ramdisk"
 
@@ -506,29 +521,20 @@ cd ..
 rm -rf ramdisk/
 
 magiskboot repack vendor_boot.img || die "magiskboot repack vendor_boot.img failed"
-cp new-boot.img "${TEMPLATE_IMAGES_DIR}/vendor_boot.img" \
+cp new-boot.img "${TMP_ZIP_STAGING}/images/vendor_boot.img" \
     || die "new-boot.img not found after vendor_boot repack"
 rm -f dtb header ramdisk.cpio new-boot.img
 cd "${KERNEL_ROOT}"
-success "vendor_boot.img repacked and placed in ${TEMPLATE_IMAGES_DIR}/"
+success "vendor_boot.img repacked"
 
-# ─── Step 15: Build flashable zip from temp staging dir ──────────────────────
-info "Creating flashable zip: ${ZIP_NAME}..."
-[[ ! -f "${KERNEL_ROOT}/${ZIP_NAME}" ]] || warn "Overwriting existing zip: ${ZIP_NAME}"
-
-# Verify all three images are present before zipping — catches any silent failure above
+# ─── Step 15: Build flashable zip ────────────────────────────────────────────
+# Verify all three images landed in staging before zipping
 for img in boot.img vendor_boot.img dtbo.img; do
-    [[ -f "${TEMPLATE_IMAGES_DIR}/${img}" ]] \
-        || die "Missing ${img} in ${TEMPLATE_IMAGES_DIR} — repack stage may have failed"
+    [[ -f "${TMP_ZIP_STAGING}/images/${img}" ]] \
+        || die "Missing ${img} in zip staging dir — repack stage may have failed"
 done
 
-# Create temp staging dir — the tracked template files are never modified
-TMP_ZIP_STAGING="$(mktemp -d)"
-cp -r "${TEMPLATE_ZIP_DIR}/META-INF" "${TMP_ZIP_STAGING}/META-INF"
-mkdir -p "${TMP_ZIP_STAGING}/images"
-cp "${TEMPLATE_IMAGES_DIR}"/*.img "${TMP_ZIP_STAGING}/images/"
-
-# Patch update-binary placeholders in the temp copy only
+# Patch update-binary placeholders in the temp copy only — original template untouched
 sed -i \
     -e "s|@ROM_TYPE@|${ROM_TYPE}|g" \
     -e "s|@ROOT_DISPLAY@|${ROOT_DISPLAY}|g" \
