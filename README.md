@@ -6,6 +6,8 @@ Linux 5.4.289, built with Clang v19.0 (plus other compilation optimizations)
 
 [XDA thread](https://xdaforums.com/t/kernel-a528b-n-bone-machines-custom-android-kernel-with-kernelsu-next-v3-2-0-legacy-for-a52s-5g.4790917/)
 
+[Telegram group](https://t.me/bone_machine_A52s_5G)
+
 ### Features
 
 - Implemented KSU-Next (**v3.2.0-legacy**) as the root solution, using manual hooks
