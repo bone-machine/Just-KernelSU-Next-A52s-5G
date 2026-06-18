@@ -70,9 +70,9 @@ BUILD_DATE="$(date +%Y-%m-%d)"
 # Detect ROM type from current git branch
 CURRENT_BRANCH="$(git -C "${KERNEL_ROOT}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unknown')"
 case "$CURRENT_BRANCH" in
-    main)      ROM_TYPE="One-UI" ;;
-    *oneui*)   ROM_TYPE="One-UI" ;;
-    *aosp*)    ROM_TYPE="AOSP"   ;;
+    main)      ROM_TYPE="One-UI" ROM_DISPLAY="One UI" ;;
+    *oneui*)   ROM_TYPE="One-UI" ROM_DISPLAY="One UI" ;;
+    *aosp*)    ROM_TYPE="AOSP" ROM_DISPLAY="AOSP"   ;;
     *)
         warn "Branch '$CURRENT_BRANCH' doesn't match any known ROM type — defaulting to AOSP"
         ROM_TYPE="AOSP"
@@ -167,7 +167,7 @@ fi
 check_file "${KERNEL_ROOT}/arch/arm64/configs/vendor/a52sxq_kor_single_defconfig" "Kernel defconfig"
 
 # Verify update-binary template contains expected placeholders
-for placeholder in "@ROM_TYPE@" "@ROOT_DISPLAY@" "@BUILD_DATE@"; do
+for placeholder in "@ROM_DISPLAY@" "@ROOT_DISPLAY@" "@BUILD_DATE@"; do
     grep -q "$placeholder" "$UPDATE_BINARY_TEMPLATE" || {
         echo -e "${RED}${BOLD}[MISSING]${NC} Placeholder ${placeholder} not found in update-binary template"
         PREFLIGHT_FAILED=1
@@ -536,7 +536,7 @@ done
 
 # Patch update-binary placeholders in the temp copy only — original template untouched
 sed -i \
-    -e "s|@ROM_TYPE@|${ROM_TYPE}|g" \
+    -e "s|@ROM_DISPLAY@|${ROM_DISPLAY}|g" \
     -e "s|@ROOT_DISPLAY@|${ROOT_DISPLAY}|g" \
     -e "s|@BUILD_DATE@|${BUILD_DATE}|g" \
     "${TMP_ZIP_STAGING}/META-INF/com/google/android/update-binary" \
@@ -557,7 +557,7 @@ echo -e "${GREEN}${BOLD}══════════════════�
 echo -e "${GREEN}${BOLD}  Build complete!${NC}"
 echo -e "  Author:     ${AUTHOR}"
 echo -e "  Device:     ${DEVICE}"
-echo -e "  ROM:        ${ROM_TYPE}"
+echo -e "  ROM:        ${ROM_DISPLAY}"
 echo -e "  Root:       ${ROOT_DISPLAY}"
 echo -e "  Date:       ${BUILD_DATE}"
 echo -e "  Output:     ${ZIP_NAME}"
