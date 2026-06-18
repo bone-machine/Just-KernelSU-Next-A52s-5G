@@ -94,7 +94,7 @@ ui_print " ";
 ui_print "Device:     Samsung Galaxy A52s 5G";
 ui_print "Codename:   a52sxq";
 ui_print "Root:       @ROOT_DISPLAY@";
-ui_print "ROM:        @ROM_TYPE@";
+ui_print "ROM:        @ROM_DISPLAY@";
 ui_print "Kernel:     Linux 5.4.289";
 ui_print "Compiler:   Clang 19";
 ui_print "Build date: @BUILD_DATE@";
