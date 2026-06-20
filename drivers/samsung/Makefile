@@ -12,3 +12,7 @@ obj-$(CONFIG_SEC_DEBUG_TEST)	+= debug/
 GCOV_PROFILE_sec_class.o		:=y
 
 obj-$(CONFIG_SAMSUNG_LMKD_DEBUG)		+= lmkd_debug.o
+
+ifneq ($(CONFIG_SEC_USER_RESET_DEBUG),y)
+    obj-y += sec_debug_reclaim_memory.o
+endif
