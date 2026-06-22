@@ -1845,11 +1845,10 @@ static void stm_ts_status_event(struct stm_ts_data *ts, u8 *event_buff)
 				if (ts->plat_data->power_state == SEC_INPUT_STATE_LPM || !ts->plat_data->touch_count) {
 					// Report actual range through hover proximity and block touch proximity during screen on
 					// When panel is in LPM state use touch proximity
-					p_event_status->status_data_1 = p_event_status->status_data_1 == 5 || !p_event_status->status_data_1;
-					ts->hover_event = p_event_status->status_data_1;
-					input_report_abs(ts->plat_data->input_dev_proximity, ABS_MT_CUSTOM, p_event_status->status_data_1);
-					input_sync(ts->plat_data->input_dev_proximity);
-					input_info(true, &ts->client->dev, "%s: proximity: %d\n", __func__, p_event_status->status_data_1);
+					int proximity = p_event_status->status_data_1 == 5 || !p_event_status->status_data_1;
+					ts->hover_event = proximity;
+					sec_input_proximity_report(&ts->client->dev, proximity);
+					input_info(true, &ts->client->dev, "%s: proximity: %d\n", __func__, proximity);
 				}
 			}
 		}
