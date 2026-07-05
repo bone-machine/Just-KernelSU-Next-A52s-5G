@@ -1110,6 +1110,12 @@ static ssize_t usb_sl_store(
 		}
 	}
 	if (secure_lock == ~0UL) {
+		unsigned long val;
+
+		if (!kstrtoul(input_str, 10, &val) && val < VALID_INPUT_CNT)
+			secure_lock = val;
+	}
+	if (secure_lock == ~0UL) {
 		pr_err("%s disallow input (%s)-\n", __func__, input_str);
 		goto error;
 	}
